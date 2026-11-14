@@ -318,20 +318,25 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
       <p class="lead">Series, animes, películas y juegos con puntuación individual y promedio de pareja.</p>
       <form class="form" id="f-watch" autocomplete="off">
         <div class="f"><label class="cap" for="w-title">Título</label><input id="w-title" type="text" required maxlength="80" placeholder="Ej. Chainsaw Man, Zelda, Dune…"></div>
-        <div class="f-sm"><label class="cap" for="w-kind">Categoría</label>
+        <div class="f-sm"><label class="cap" for="w-kind">Categoría (auto)</label>
           <select id="w-kind">
+            <option value="auto">Detectar auto</option>
             <option value="serie">Serie</option>
             <option value="anime">Anime</option>
             <option value="pelicula">Película</option>
             <option value="juego">Videojuego</option>
           </select>
         </div>
-        <div class="f-sm"><label class="cap" for="w-plat">Plataforma</label><input id="w-plat" type="text" maxlength="30" list="plats" placeholder="Crunchyroll, Xbox…">
-          <datalist id="plats"><option value="Netflix"><option value="Crunchyroll"><option value="Disney+"><option value="Prime Video"><option value="Max"><option value="Xbox"><option value="Switch"><option value="PC"></datalist>
+        <div class="f-sm"><label class="cap" for="w-plat">Plataforma elegida</label><input id="w-plat" type="text" maxlength="40" list="plats" placeholder="Elige o escribe…">
+          <datalist id="plats"><option value="Netflix"><option value="Crunchyroll"><option value="Disney+"><option value="Prime Video"><option value="Max"><option value="Apple TV+"><option value="YouTube"><option value="Xbox"><option value="Switch"><option value="PC"></datalist>
         </div>
-        <div class="f-wide"><label class="cap" for="w-cover">Portada (URL opcional o usa Buscar Carátula)</label><input id="w-cover" type="url" maxlength="400" placeholder="https://…"></div>
+        <div class="f-wide" id="detected-plats-box" hidden>
+          <label class="cap">Disponible / Detectado en (toca para elegir dónde verlo):</label>
+          <div class="chips" id="detected-plats"></div>
+        </div>
+        <div class="f-wide"><label class="cap" for="w-cover">Portada (URL opcional o usa Buscar Info)</label><input id="w-cover" type="url" maxlength="400" placeholder="https://…"></div>
         <button class="btn" type="submit">Agregar al catálogo</button>
-        <button class="btn ghost" type="button" id="btn-search-api">Buscar carátula</button>
+        <button class="btn ghost" type="button" id="btn-search-api">Buscar info y plataformas</button>
       </form>
       <div class="api-box" id="api-box" hidden>
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -677,49 +682,153 @@ const firebaseConfig = {
   }
 
   /* ---------- Catálogo Metacritic ---------- */
+  function setDetectedPlatforms(plats, queryTitle) {
+    var box = $('#detected-plats-box'), list = $('#detected-plats');
+    list.replaceChildren();
+    var unique = [];
+    (plats || []).forEach(function (p) { if (p && unique.indexOf(p) === -1) unique.push(p); });
+    box.hidden = false;
+    unique.forEach(function (p) {
+      list.append(h('button', {
+        type: 'button', class: 'chip' + ($('#w-plat').value === p ? ' on' : ''),
+        onclick: function () {
+          $('#w-plat').value = p;
+          $$('#detected-plats .chip').forEach(function (c) { c.classList.toggle('on', c.textContent === p); });
+          toast('Plataforma elegida: ' + p);
+        }
+      }, p));
+    });
+    if (queryTitle) {
+      list.append(h('a', {
+        href: 'https://www.justwatch.com/mx/buscar?q=' + encodeURIComponent(queryTitle),
+        target: '_blank', rel: 'noopener noreferrer',
+        class: 'chip', style: 'text-decoration:none;border-style:dashed;color:var(--gold)',
+        text: 'Verificar en JustWatch MX ↗'
+      }));
+    }
+  }
+
   function searchCoverAPI() {
     var q = $('#w-title').value.trim();
-    var kind = $('#w-kind').value;
-    if (!q) { toast('Escribe primero el título para buscar su carátula.'); $('#w-title').focus(); return; }
+    var selectedKind = $('#w-kind').value;
+    if (!q) { toast('Escribe primero el título para buscar.'); $('#w-title').focus(); return; }
     var box = $('#api-box'), res = $('#api-results'), st = $('#api-status');
     box.hidden = false;
     res.replaceChildren();
-    st.textContent = 'Buscando carátulas…';
+    st.textContent = 'Buscando en internet categoría, carátula y plataformas…';
 
-    var url = '';
-    if (kind === 'anime') {
-      url = 'https://api.jikan.moe/v4/anime?q=' + encodeURIComponent(q) + '&limit=6';
-    } else if (kind === 'serie') {
-      url = 'https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(q);
-    } else {
-      url = 'https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=' + (kind === 'pelicula' ? 'movie' : 'software') + '&limit=6';
-    }
+    var fetchAnime = (selectedKind === 'auto' || selectedKind === 'anime')
+      ? fetch('https://api.jikan.moe/v4/anime?q=' + encodeURIComponent(q) + '&limit=4')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            return (d.data || []).map(function (a) {
+              var plats = [];
+              if (a.streaming && Array.isArray(a.streaming)) {
+                a.streaming.forEach(function (s) { if (s.name) plats.push(s.name); });
+              }
+              if (!plats.length) plats.push('Crunchyroll');
+              return {
+                title: a.title,
+                kind: 'anime',
+                malId: a.mal_id,
+                img: a.images && a.images.jpg && a.images.jpg.image_url,
+                plats: plats
+              };
+            });
+          }).catch(function () { return []; })
+      : Promise.resolve([]);
 
-    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-      var items = [];
-      if (kind === 'anime' && data.data) {
-        items = data.data.map(function (a) { return { title: a.title, img: a.images && a.images.jpg && a.images.jpg.image_url }; });
-      } else if (kind === 'serie' && Array.isArray(data)) {
-        items = data.slice(0, 6).map(function (s) { return { title: s.show.name, img: s.show.image && s.show.image.medium }; });
-      } else if (data.results) {
-        items = data.results.map(function (r) { return { title: r.trackName, img: (r.artworkUrl100 || '').replace('100x100', '400x400') }; });
+    var fetchSeries = (selectedKind === 'auto' || selectedKind === 'serie')
+      ? fetch('https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            return (Array.isArray(d) ? d.slice(0, 4) : []).map(function (s) {
+              var sh = s.show || {};
+              var plats = [];
+              if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
+              if (sh.network && sh.network.name) plats.push(sh.network.name);
+              var isAnime = (sh.type === 'Animation' && sh.language === 'Japanese');
+              return {
+                title: sh.name,
+                kind: isAnime ? 'anime' : 'serie',
+                img: sh.image && sh.image.medium,
+                plats: plats
+              };
+            });
+          }).catch(function () { return []; })
+      : Promise.resolve([]);
+
+    var fetchMovies = (selectedKind === 'auto' || selectedKind === 'pelicula')
+      ? fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=movie&country=mx&limit=3')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            return (d.results || []).map(function (r) {
+              return {
+                title: r.trackName,
+                kind: 'pelicula',
+                img: (r.artworkUrl100 || '').replace('100x100', '400x400'),
+                plats: ['Apple TV+']
+              };
+            });
+          }).catch(function () { return []; })
+      : Promise.resolve([]);
+
+    var fetchGames = (selectedKind === 'auto' || selectedKind === 'juego')
+      ? fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=software&country=mx&limit=3')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            return (d.results || []).map(function (r) {
+              return {
+                title: r.trackName,
+                kind: 'juego',
+                img: (r.artworkUrl100 || '').replace('100x100', '400x400'),
+                plats: ['Xbox', 'Switch', 'PC']
+              };
+            });
+          }).catch(function () { return []; })
+      : Promise.resolve([]);
+
+    Promise.all([fetchAnime, fetchSeries, fetchMovies, fetchGames]).then(function (groups) {
+      var items = [].concat(groups[0], groups[1], groups[2], groups[3]).filter(function (x) { return x.img; });
+      if (!items.length) {
+        st.textContent = 'Sin coincidencias exactas. Puedes elegir categoría y plataforma manualmente.';
+        setDetectedPlatforms([], q);
+        return;
       }
-      items = items.filter(function (x) { return x.img; });
-      if (!items.length) { st.textContent = 'Sin resultados con imagen. Puedes pegar un enlace manual.'; return; }
-      st.textContent = 'Toca una carátula para seleccionarla:';
-      items.forEach(function (it) {
+      st.textContent = 'Selecciona el resultado correcto (detecta categoría y plataformas):';
+      items.slice(0, 8).forEach(function (it) {
+        var subtitle = (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '');
         res.append(h('button', {
           type: 'button', class: 'api-item',
           onclick: function () {
             $('#w-title').value = it.title;
+            $('#w-kind').value = it.kind;
             $('#w-cover').value = it.img;
+            if (it.plats.length && !$('#w-plat').value) {
+              $('#w-plat').value = it.plats[0];
+            }
             box.hidden = true;
-            toast('Carátula seleccionada');
+            setDetectedPlatforms(it.plats, it.title);
+            toast('Detectado como ' + (KINDS[it.kind] || it.kind));
+
+            if (it.kind === 'anime' && it.malId) {
+              fetch('https://api.jikan.moe/v4/anime/' + it.malId + '/streaming')
+                .then(function (r) { return r.json(); })
+                .then(function (sd) {
+                  if (sd && Array.isArray(sd.data) && sd.data.length) {
+                    var streamNames = sd.data.map(function (s) { return s.name; });
+                    setDetectedPlatforms(streamNames, it.title);
+                    if (!$('#w-plat').value) $('#w-plat').value = streamNames[0];
+                  }
+                }).catch(function () {});
+            }
           }
-        }, h('img', { src: it.img, alt: it.title }), h('span', { text: it.title })));
+        },
+          h('img', { src: it.img, alt: it.title }),
+          h('span', { text: it.title }),
+          h('span', { style: 'font-size:.7rem;color:var(--rose)', text: subtitle })
+        ));
       });
-    }).catch(function () {
-      st.textContent = 'No se pudo conectar al buscador. Pega una URL de imagen manualmente.';
     });
   }
 
@@ -1167,10 +1276,12 @@ const firebaseConfig = {
     onSubmit('#f-watch', function () {
       var title = $('#w-title').value.trim();
       if (!title) return false;
+      var k = $('#w-kind').value;
+      if (k === 'auto') k = 'serie';
       return run(function () {
         return add('watch', {
           title: title,
-          kind: $('#w-kind').value,
+          kind: k,
           platform: $('#w-plat').value.trim(),
           cover: $('#w-cover').value.trim(),
           status: 'por-ver',
@@ -1182,7 +1293,15 @@ const firebaseConfig = {
           revB: ''
         });
       }).then(function (ok) {
-        if (ok) { $('#w-title').value = ''; $('#w-cover').value = ''; $('#api-box').hidden = true; $('#w-title').focus(); }
+        if (ok) {
+          $('#w-title').value = '';
+          $('#w-cover').value = '';
+          $('#w-plat').value = '';
+          $('#w-kind').value = 'auto';
+          $('#api-box').hidden = true;
+          $('#detected-plats-box').hidden = true;
+          $('#w-title').focus();
+        }
         return ok;
       });
     });
