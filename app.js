@@ -796,15 +796,31 @@ function setupAutocomplete() {
   }
 
   function buildWho() {
-    var sel = $('#td-who'), v = sel.value || 'both';
-    sel.replaceChildren(h('option', { value: 'both', text: 'Ambos' }), h('option', { value: 'a', text: S.settings.nameA }), h('option', { value: 'b', text: S.settings.nameB }));
-    sel.value = v;
-    var meSel = $('#who-am-i');
-    if (meSel) {
-      meSel.replaceChildren(h('option', { value: 'a', text: S.settings.nameA }), h('option', { value: 'b', text: S.settings.nameB }));
-      meSel.value = S.me;
+    var sel = $('#td-who');
+
+    if (sel) {
+        var v = sel.value || 'both';
+
+        sel.replaceChildren(
+            h('option', { value: 'both', text: 'Ambos' }),
+            h('option', { value: 'a', text: S.settings.nameA }),
+            h('option', { value: 'b', text: S.settings.nameB })
+        );
+
+        sel.value = v;
     }
-  }
+
+    var meSel = $('#who-am-i');
+
+    if (meSel) {
+        meSel.replaceChildren(
+            h('option', { value: 'a', text: S.settings.nameA }),
+            h('option', { value: 'b', text: S.settings.nameB })
+        );
+
+        meSel.value = S.me;
+    }
+}
   var WHOC = { a: 'var(--rose)', b: 'var(--sky)', both: 'var(--gold)' };
   function renderTodos() {
     var f = $('#td-filters');
