@@ -1024,7 +1024,7 @@ const firebaseConfig = {
               toast('No se pudo iniciar sesión.');
             });
           };
-          loadData(); // Permite lectura anónima si las reglas de Firestore lo permiten
+          loadData();
         }
       });
     } catch (e) {

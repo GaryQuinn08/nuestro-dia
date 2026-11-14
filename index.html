@@ -8,52 +8,294 @@
 </head>
 <body>
   <div class="app-container">
-    <header>
-      <h1>Nuestra Zona Geek</h1>
-      <p>Catálogo y seguimiento compartido</p>
+    <header class="header">
+      <div>
+        <h1>Nuestra Zona Geek</h1>
+        <p>Catálogo y seguimiento compartido</p>
+      </div>
+      <div class="header-right">
+        <select id="who-am-i" aria-label="Quién eres">
+          <option value="a">Gary</option>
+          <option value="b">Yumi</option>
+        </select>
+        <button id="auth-btn" class="btn ghost sm" type="button">Iniciar sesión</button>
+      </div>
     </header>
 
+    <!-- Pestañas de navegación -->
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" class="tab-btn on" data-tab="hoy" aria-selected="true">Hoy</button>
+      <button type="button" role="tab" class="tab-btn" data-tab="watch" aria-selected="false">Catálogo</button>
+      <button type="button" role="tab" class="tab-btn" data-tab="plans" aria-selected="false">Planes</button>
+      <button type="button" role="tab" class="tab-btn" data-tab="todos" aria-selected="false">Pendientes</button>
+      <button type="button" role="tab" class="tab-btn" data-tab="extras" aria-selected="false">Extras</button>
+    </nav>
+
     <main>
-      <!-- Formulario para agregar elementos -->
-      <section class="card">
-        <h2>Añadir a la lista</h2>
-        <form id="item-form">
-          <div class="input-wrapper">
-            <label class="cap" for="w-title">Título (escribe para autocompletar)</label>
-            <input id="w-title" type="text" required maxlength="80" placeholder="Ej. D.Gray-man, Chainsaw Man…">
-            <div id="autocomplete-list" class="autocomplete-dropdown" hidden></div>
-          </div>
+      <!-- TAB: HOY / CALENDARIO -->
+      <section id="tab-hoy" class="tab-pane">
+        <div class="card">
+          <h2>Añadir actividad</h2>
+          <form id="ev-form" class="form-grid">
+            <div class="input-wrapper">
+              <label class="cap" for="ev-title">Título</label>
+              <input id="ev-title" type="text" required maxlength="80" placeholder="Ej. Maratón de anime, cenar juntos...">
+            </div>
+            <div class="input-wrapper">
+              <label class="cap" for="ev-date">Fecha</label>
+              <input id="ev-date" type="date">
+            </div>
+            <div class="input-wrapper">
+              <label class="cap" for="ev-time">Hora (opcional)</label>
+              <input id="ev-time" type="time">
+            </div>
+            <div class="input-wrapper" style="grid-column: 1 / -1;">
+              <label class="cap">Categoría</label>
+              <div id="ev-cats" class="chips-container" role="radiogroup"></div>
+            </div>
+            <div class="input-wrapper" style="grid-column: 1 / -1;">
+              <label class="cap" for="ev-note">Nota (opcional)</label>
+              <input id="ev-note" type="text" maxlength="120" placeholder="Detalles o link de stream...">
+            </div>
+            <button type="submit" class="btn-primary" style="grid-column: 1 / -1;">Guardar Actividad</button>
+          </form>
+        </div>
 
-          <div class="input-wrapper">
-            <label class="cap" for="w-kind">Tipo</label>
-            <select id="w-kind">
-              <option value="anime">Anime</option>
-              <option value="serie">Serie / Película</option>
-            </select>
+        <div class="card">
+          <div class="day-nav">
+            <h2 id="day-label">Hoy</h2>
           </div>
-
-          <div id="detected-plats-box" hidden>
-            <span class="cap">Plataformas sugeridas (haz clic para elegir o buscar):</span>
-            <div id="detected-plats" class="chips-container"></div>
+          <div id="week" class="week-strip"></div>
+          <div id="prog" class="progress-box" hidden>
+            <span id="prog-t">0 de 0 hechas</span>
+            <div class="progress-bar"><div id="prog-b" class="progress-fill"></div></div>
           </div>
-
-          <div class="input-wrapper">
-            <label class="cap" for="w-plat">Plataforma seleccionada</label>
-            <input id="w-plat" type="text" placeholder="Ej. Crunchyroll, JKanime...">
-          </div>
-
-          <button type="submit" class="btn-primary">Guardar en el Catálogo</button>
-        </form>
+          <ul id="ev-list" class="list"></ul>
+        </div>
       </section>
 
-      <!-- Listado del catálogo -->
-      <section class="card">
-        <h2>Catálogo Actual</h2>
-        <div id="catalog-list" class="api-results"></div>
+      <!-- TAB: CATÁLOGO (WATCH) -->
+      <section id="tab-watch" class="tab-pane" hidden>
+        <div class="card">
+          <h2>Añadir al Catálogo</h2>
+          <form id="w-form">
+            <div class="input-wrapper">
+              <label class="cap" for="w-title">Título (escribe para autocompletar)</label>
+              <input id="w-title" type="text" required maxlength="80" placeholder="Ej. Chainsaw Man, D.Gray-man…">
+              <div id="autocomplete-list" class="autocomplete-dropdown" hidden></div>
+            </div>
+
+            <div class="input-row">
+              <div class="input-wrapper">
+                <label class="cap" for="w-kind">Tipo</label>
+                <select id="w-kind">
+                  <option value="anime">Anime</option>
+                  <option value="serie">Serie</option>
+                  <option value="pelicula">Película</option>
+                  <option value="juego">Videojuego</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <input id="w-cover" type="hidden">
+                <button type="button" id="w-search-api" class="btn ghost" style="margin-top:18px;">Buscar portada/info 🔍</button>
+              </div>
+            </div>
+
+            <div id="api-box" class="api-modal-box" hidden>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span id="api-status" class="cap">Selecciona un resultado:</span>
+                <button type="button" id="api-close" class="icon-btn" style="height:24px;width:24px;">✕</button>
+              </div>
+              <div id="api-results" class="api-results"></div>
+            </div>
+
+            <div id="detected-plats-box" hidden style="margin-top:8px;">
+              <span class="cap">Plataformas sugeridas (haz clic para elegir o abrir web en español):</span>
+              <div id="detected-plats" class="chips-container"></div>
+            </div>
+
+            <div class="input-wrapper" style="margin-top:10px;">
+              <label class="cap" for="w-plat">Plataforma</label>
+              <input id="w-plat" type="text" placeholder="Ej. Crunchyroll, JKanime, Netflix...">
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top:12px;">Guardar en el Catálogo</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <h2>Catálogo Compartido</h2>
+            <button type="button" class="btn sm" onclick="pickRandom()">🎲 Sortear qué ver</button>
+          </div>
+          <div id="w-kind-filters" class="chips-container" style="margin-top:10px;"></div>
+          <div id="w-filters" class="chips-container" style="margin-top:6px;"></div>
+          <ul id="w-list" class="list" style="margin-top:12px;"></ul>
+        </div>
+      </section>
+
+      <!-- TAB: PLANES -->
+      <section id="tab-plans" class="tab-pane" hidden>
+        <div class="card">
+          <h2>Proponer un Plan</h2>
+          <form id="p-form">
+            <div class="input-wrapper">
+              <label class="cap" for="p-title">Idea de cita / plan</label>
+              <input id="p-title" type="text" required maxlength="100" placeholder="Ej. Ir por café y postre...">
+            </div>
+            <div class="input-row">
+              <div class="input-wrapper">
+                <label class="cap" for="p-place">Lugar (opcional)</label>
+                <input id="p-place" type="text" maxlength="60" placeholder="Ej. Cafetería del centro">
+              </div>
+              <div class="input-wrapper">
+                <label class="cap" for="p-date">Fecha (opcional)</label>
+                <input id="p-date" type="date">
+              </div>
+            </div>
+            <div class="input-wrapper">
+              <label class="cap">Ideas rápidas:</label>
+              <div id="p-ideas" class="chips-container"></div>
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top:10px;">Guardar Plan</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Planes e Ideas</h2>
+          <ul id="p-list" class="list"></ul>
+        </div>
+      </section>
+
+      <!-- TAB: PENDIENTES -->
+      <section id="tab-todos" class="tab-pane" hidden>
+        <div class="card">
+          <h2>Nuevo Pendiente</h2>
+          <form id="td-form" class="input-row">
+            <div class="input-wrapper" style="flex:2;">
+              <input id="td-title" type="text" required maxlength="100" placeholder="Ej. Comprar ingredientes para la cena...">
+            </div>
+            <div class="input-wrapper" style="flex:1;">
+              <select id="td-who">
+                <option value="both">Ambos</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-primary">Añadir</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Lista de Tareas Compartidas</h2>
+          <div id="td-filters" class="chips-container" style="margin-bottom:10px;"></div>
+          <ul id="td-list" class="list"></ul>
+        </div>
+      </section>
+
+      <!-- TAB: EXTRAS (CARTAS, RECUERDOS, ETC) -->
+      <section id="tab-extras" class="tab-pane" hidden>
+        <div class="sub-tabs" role="tablist">
+          <button type="button" role="tab" class="sub-tab on" data-sub="cartas" aria-selected="true">Cartitas</button>
+          <button type="button" role="tab" class="sub-tab" data-sub="recuerdos" aria-selected="false">Recuerdos</button>
+          <button type="button" role="tab" class="sub-tab" data-sub="cuentas" aria-selected="false">Cuentas</button>
+          <button type="button" role="tab" class="sub-tab" data-sub="encuestas" aria-selected="false">Encuestas</button>
+        </div>
+
+        <!-- Subtab: Cartas -->
+        <div id="sub-cartas" class="sub-pane">
+          <div class="card">
+            <h2>Escribir Cartita</h2>
+            <form id="letter-form">
+              <div class="input-wrapper">
+                <textarea id="letter-body" rows="3" required maxlength="500" placeholder="Escribe algo lindo para tu pareja..."></textarea>
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:8px;">Enviar Cartita 💌</button>
+            </form>
+          </div>
+          <div id="pinned-box" hidden></div>
+          <div class="card">
+            <h2>Buzón de Cartitas</h2>
+            <div id="letters-list" class="letters-grid"></div>
+          </div>
+        </div>
+
+        <!-- Subtab: Recuerdos -->
+        <div id="sub-recuerdos" class="sub-pane" hidden>
+          <div class="card">
+            <h2>Subir Recuerdo (Foto)</h2>
+            <form id="mem-form" class="input-row">
+              <input id="mem-file" type="file" accept="image/*" style="display:none">
+              <button type="button" class="btn" onclick="$('#mem-file').click()">📷 Seleccionar Foto</button>
+              <input id="mem-cap" type="text" maxlength="80" placeholder="Descripción breve..." style="flex:2;">
+            </form>
+          </div>
+          <div class="card">
+            <h2>Galería de Recuerdos</h2>
+            <div id="mem-grid" class="memories-grid"></div>
+          </div>
+        </div>
+
+        <!-- Subtab: Cuentas Regresivas -->
+        <div id="sub-cuentas" class="sub-pane" hidden>
+          <div class="card">
+            <h2>Nueva Fecha Especial</h2>
+            <form id="cd-form" class="input-row">
+              <div class="input-wrapper" style="flex:2;">
+                <input id="cd-title" type="text" required maxlength="60" placeholder="Ej. Aniversario, Próximo viaje...">
+              </div>
+              <div class="input-wrapper" style="flex:1;">
+                <input id="cd-date" type="date">
+              </div>
+              <button type="submit" class="btn-primary">Crear</button>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Cuentas Regresivas</h2>
+            <ul id="cd-list" class="list"></ul>
+          </div>
+        </div>
+
+        <!-- Subtab: Encuestas -->
+        <div id="sub-encuestas" class="sub-pane" hidden>
+          <div class="card">
+            <h2>Crear Votación / Encuesta</h2>
+            <form id="poll-form">
+              <div class="input-wrapper">
+                <input id="poll-q" type="text" required maxlength="100" placeholder="Pregunta (Ej. ¿Qué cenamos hoy?)">
+              </div>
+              <div class="input-row" style="margin-top:8px;">
+                <input id="poll-optA" type="text" required maxlength="50" placeholder="Opción A">
+                <input id="poll-optB" type="text" required maxlength="50" placeholder="Opción B">
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:10px;">Lanzar Encuesta</button>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Encuestas Activas</h2>
+            <div id="poll-list"></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>
 
+  <!-- Modal para sortear título -->
+  <div id="pick" class="modal" hidden>
+    <div class="modal-content card">
+      <h2>🎲 ¡Título sorteado!</h2>
+      <div class="pick-result">
+        <h3 id="pick-t" style="font-size:1.2rem;color:var(--rose)"></h3>
+        <p id="pick-m" class="muted"></p>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button type="button" id="pick-go" class="btn-primary" style="flex:1;">Marcar como En curso</button>
+        <button type="button" id="pick-again" class="btn ghost" style="flex:1;">Sortear otro</button>
+        <button type="button" id="pick-close" class="icon-btn">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast para notificaciones -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- Archivo principal de JavaScript -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
