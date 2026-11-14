@@ -225,22 +225,51 @@ const firebaseConfig = {
     });
   }
 
-  function setDetectedPlatforms(plats, queryTitle) {
+function setDetectedPlatforms(plats, queryTitle) {
     var box = $('#detected-plats-box'), list = $('#detected-plats');
     list.replaceChildren();
+    
     var unique = [];
     (plats || []).forEach(function (p) { if (p && unique.indexOf(p) === -1) unique.push(p); });
+    
+    // Agregamos plataformas de anime en español comunes por defecto si es anime o serie
+    var defaultAnimeSites = ['JKanime', 'AnimeFLV', 'MonosChinos'];
+    defaultAnimeSites.forEach(function(site) {
+      if (unique.indexOf(site) === -1) unique.push(site);
+    });
+
     box.hidden = false;
     unique.forEach(function (p) {
-      list.append(h('button', {
-        type: 'button', class: 'chip' + ($('#w-plat').value === p ? ' on' : ''),
-        onclick: function () {
-          $('#w-plat').value = p;
-          $$('#detected-plats .chip').forEach(function (c) { c.classList.toggle('on', c.textContent === p); });
-          toast('Plataforma elegida: ' + p);
-        }
-      }, p));
+      // Verificamos si es una plataforma web para armar un enlace de búsqueda directa si el usuario lo toca
+      var isCustomWeb = ['JKanime', 'AnimeFLV', 'MonosChinos'].indexOf(p) !== -1;
+      var chipClass = 'chip' + ($('#w-plat').value === p ? ' on' : '');
+      
+      if (isCustomWeb && queryTitle) {
+        var searchUrl = p === 'JKanime' ? 'https://jkanime.net/es/buscar/?q=' + encodeURIComponent(queryTitle)
+                      : p === 'AnimeFLV' ? 'https://animeskak.com/browse?q=' + encodeURIComponent(queryTitle)
+                      : 'https://monoschinos.com/animes?q=' + encodeURIComponent(queryTitle);
+        
+        list.append(h('a', {
+          href: searchUrl,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: chipClass,
+          style: 'text-decoration:none;',
+          text: p + ' ↗'
+        }));
+      } else {
+        list.append(h('button', {
+          type: 'button',
+          class: chipClass,
+          onclick: function () {
+            $('#w-plat').value = p;
+            $$('#detected-plats .chip').forEach(function (c) { c.classList.toggle('on', c.textContent === p); });
+            toast('Plataforma elegida: ' + p);
+          }
+        }, p));
+      }
     });
+
     if (queryTitle) {
       list.append(h('a', {
         href: 'https://www.justwatch.com/mx/buscar?q=' + encodeURIComponent(queryTitle),
@@ -250,7 +279,6 @@ const firebaseConfig = {
       }));
     }
   }
-
   var searchTimer = null;
 
 function fetchAllMatches(query) {
