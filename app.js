@@ -253,31 +253,33 @@ const firebaseConfig = {
 
   var searchTimer = null;
 
-  function fetchAllMatches(query) {
+function fetchAllMatches(query) {
     if (!query || query.length < 2) return Promise.resolve([]);
     var cleanQ = encodeURIComponent(query.trim());
 
-    var pAnime = fetch('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=3')
-      .then(function(r) { return r.json(); })
+    var pAnime = fetch('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=4')
+      .then(function(r) { return r.ok ? r.json() : { data: [] }; })
       .then(function(d) {
         return (d.data || []).map(function(a) {
           var plats = [];
-          if (a.streaming) a.streaming.forEach(function(s) { if (s.name) plats.push(s.name); });
+          if (a.streaming) {
+            a.streaming.forEach(function(s) { if (s.name) plats.push(s.name); });
+          }
           if (!plats.length) plats.push('Crunchyroll');
           return {
-            title: a.title,
+            title: a.title_english || a.title,
             kind: 'anime',
             malId: a.mal_id,
-            img: a.images && a.images.jpg && a.images.jpg.image_url,
+            img: (a.images && a.images.jpg && a.images.jpg.image_url) || '',
             plats: plats
           };
         });
       }).catch(function() { return []; });
 
     var pSeries = fetch('https://api.tvmaze.com/search/shows?q=' + cleanQ)
-      .then(function(r) { return r.json(); })
+      .then(function(r) { return r.ok ? r.json() : []; })
       .then(function(d) {
-        return (Array.isArray(d) ? d.slice(0, 3) : []).map(function(s) {
+        return (Array.isArray(d) ? d.slice(0, 4) : []).map(function(s) {
           var sh = s.show || {};
           var plats = [];
           if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
@@ -286,14 +288,24 @@ const firebaseConfig = {
           return {
             title: sh.name,
             kind: isAnime ? 'anime' : 'serie',
-            img: sh.image && sh.image.medium,
+            img: (sh.image && sh.image.medium) || '',
             plats: plats
           };
         });
       }).catch(function() { return []; });
 
     return Promise.all([pAnime, pSeries]).then(function(results) {
-      return [].concat(results[0], results[1]).filter(function(x) { return x.img; });
+      var combined = [].concat(results[0], results[1]);
+      // Si las APIs fallan o no devuelven nada, agregamos una opción manual basada en lo que escribió para que nunca se quede vacío
+      if (!combined.length) {
+        combined.push({
+          title: query.trim(),
+          kind: 'serie',
+          img: '',
+          plats: []
+        });
+      }
+      return combined;
     });
   }
 
