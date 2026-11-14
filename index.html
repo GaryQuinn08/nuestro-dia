@@ -13,6 +13,7 @@
   --ink:#f1e8ec; --ink-2:#b9a8b3; --ink-3:#85747f;
   --rose:#e09aad; --rose-a:rgba(224,154,173,.14); --rose-deep:#7a3a4d; --rose-ink:#2b1119;
   --gold:#d3b27f; --amber:#e0aa70; --sky:#93a9dc; --violet:#b891dc; --sage:#86bc9f; --sage-a:rgba(134,188,159,.16);
+  --mc-green:#4cc38a; --mc-yellow:#e5b84b; --mc-red:#e55a5a;
   --display:'Instrument Serif','Iowan Old Style',Georgia,serif;
   --body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
   --r:12px;
@@ -37,6 +38,10 @@ h1{font:400 clamp(2.2rem,8vw,3.2rem)/1.02 var(--display);letter-spacing:-.01em}
 .today{margin-top:.4rem;font:italic 400 1.2rem/1.2 var(--display);color:var(--ink-2)}
 .ribbon{display:inline-flex;flex-wrap:wrap;gap:.35rem;align-items:center;margin-top:16px;padding:.42rem .9rem;border:1px solid var(--line-2);border-radius:999px;color:var(--ink-2);font-size:.86rem;max-width:100%}
 .ribbon b{color:var(--rose);font-weight:600;font-variant-numeric:tabular-nums}
+.pinned-letter{margin-top:14px;padding:14px 18px;border:1px solid var(--rose-deep);border-radius:16px;background:linear-gradient(135deg,rgba(224,154,173,.12),rgba(33,26,40,.9));display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pinned-letter-k{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--rose)}
+.pinned-letter-b{margin-top:4px;font:italic 400 1.15rem/1.35 var(--display);color:var(--ink);white-space:pre-wrap}
+.pinned-letter-m{margin-top:6px;font-size:.78rem;color:var(--ink-3)}
 .note{margin-top:14px;padding:.7rem 1rem;border:1px solid var(--line-2);border-radius:var(--r);background:var(--bg-2);color:var(--ink-2);font-size:.9rem}
 .names{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 .names p{color:var(--ink-2);font-size:.88rem;margin-bottom:12px}
@@ -54,9 +59,10 @@ h2{font:400 1.7rem/1.1 var(--display)}
 /* Formularios */
 .form{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-block:16px 6px}
 .f{flex:1 1 170px;min-width:0}
-.f-sm{flex:0 1 120px;min-width:0}
+.f-sm{flex:0 1 130px;min-width:0}
 .f-wide{flex:1 1 100%;min-width:0}
 input,select,textarea{width:100%;min-width:0;padding:.7rem .85rem;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);color:var(--ink);font:inherit}
+input[type="file"]{padding:.52rem .75rem;font-size:.86rem}
 input::placeholder,textarea::placeholder{color:var(--ink-3)}
 textarea{resize:vertical;min-height:4.4rem}
 label.cap{display:block;margin-bottom:4px;font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
@@ -64,6 +70,7 @@ label.cap{display:block;margin-bottom:4px;font-size:.74rem;letter-spacing:.07em;
 .btn:hover{filter:brightness(1.08)}
 .btn:disabled{opacity:.5;cursor:default}
 .btn.ghost{background:none;color:var(--ink);border:1px solid var(--line-2)}
+.btn.sm{padding:.42rem .75rem;font-size:.82rem;border-radius:8px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .chip{display:inline-flex;align-items:center;gap:.45rem;padding:.38rem .8rem;border:1px solid var(--line);border-radius:999px;background:none;color:var(--ink-2);font:500 .82rem var(--body);cursor:pointer}
 .chip.on{border-color:var(--cat,var(--rose));color:var(--ink);background:var(--rose-a)}
@@ -110,24 +117,53 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
 .ev-note{margin-top:2px;color:var(--ink-2);font-size:.88rem;overflow-wrap:anywhere}
 .ev.done .ev-title{text-decoration:line-through;color:var(--ink-3)}
 
-/* Ver */
-.filters{margin-top:18px}
+/* Catálogo estilo Metacritic */
+.filters{margin-top:14px}
+.api-box{margin-top:12px;padding:12px;border:1px solid var(--line-2);border-radius:14px;background:var(--surface)}
+.api-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px}
+.api-item{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);cursor:pointer;text-align:left}
+.api-item:hover{border-color:var(--rose)}
+.api-item img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:var(--line)}
+.api-item span{font-size:.8rem;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pick{margin-top:16px;padding:18px;border:1px solid var(--rose-deep);border-radius:16px;background:linear-gradient(135deg,rgba(224,154,173,.11),transparent 70%)}
 .pick-k{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--rose)}
 .pick-t{margin:4px 0 2px;font:400 clamp(1.7rem,6vw,2.3rem)/1.1 var(--display);overflow-wrap:anywhere}
 .pick-m{color:var(--ink-2);font-size:.9rem}
 .pick .chips{margin-top:14px}
-.w{display:grid;gap:12px;padding:18px 0;border-bottom:1px solid var(--line)}
-.w-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+
+.w{display:grid;gap:14px;padding:20px 0;border-bottom:1px solid var(--line)}
+.w-top{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:start}
+.w-cover{width:72px;height:104px;border-radius:8px;object-fit:cover;background:var(--surface);border:1px solid var(--line)}
+.w-cover-empty{width:72px;height:104px;border-radius:8px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:.72rem;text-align:center;padding:6px}
 .w-title{font:400 1.45rem/1.15 var(--display);overflow-wrap:anywhere}
-.w-meta{margin-top:2px;color:var(--ink-3);font-size:.84rem}
-.steps{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
-.step{display:inline-flex;align-items:center;gap:8px}
-.step-l{color:var(--ink-3);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
-.step-v{min-width:1.6rem;text-align:center;font-variant-numeric:tabular-nums;font-size:1.05rem}
-.stars{display:inline-flex;gap:2px}
-.star{padding:2px 3px;border:0;background:none;color:var(--line-2);font-size:1.45rem;line-height:1;cursor:pointer}
-.star.on{color:var(--gold)}
+.w-meta{margin-top:3px;color:var(--ink-3);font-size:.84rem}
+.w-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.steps{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.step{display:inline-flex;align-items:center;gap:6px}
+.step-l{color:var(--ink-3);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase}
+.step-v{min-width:1.4rem;text-align:center;font-variant-numeric:tabular-nums;font-size:.98rem}
+
+/* Metacritic Score & Reseñas individuales */
+.mc-panel{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:grid;gap:12px}
+.mc-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mc-badge{width:50px;height:50px;border-radius:10px;display:flex;align-items:center;justify-content:center;font:600 1.35rem var(--body);font-variant-numeric:tabular-nums;color:#121014;flex-shrink:0}
+.mc-badge.green{background:var(--mc-green)}
+.mc-badge.yellow{background:var(--mc-yellow)}
+.mc-badge.red{background:var(--mc-red);color:#fff}
+.mc-badge.tbd{background:var(--line);color:var(--ink-3);font-size:.95rem}
+.mc-summary{flex:1;min-width:160px}
+.mc-verdict{font-weight:600;font-size:.95rem}
+.mc-sub{font-size:.8rem;color:var(--ink-2)}
+.mc-reviews{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rev-card{padding:10px 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--bg-2);display:flex;flex-direction:column;gap:6px}
+.rev-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rev-who{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.rev-score{padding:2px 7px;border-radius:6px;font-size:.8rem;font-weight:600;font-variant-numeric:tabular-nums;background:var(--line);color:var(--ink)}
+.rev-text{font-size:.86rem;color:var(--ink-2);line-height:1.4;white-space:pre-wrap}
+.rev-empty{font-size:.82rem;color:var(--ink-3);font-style:italic}
+.rev-edit{display:grid;gap:8px;margin-top:4px;padding-top:8px;border-top:1px dashed var(--line)}
+.rev-edit-row{display:flex;gap:8px;align-items:center}
+.rev-edit-row input[type="number"]{width:84px;padding:.45rem .6rem}
 
 /* Planes y pendientes */
 .plan{display:grid;gap:10px;padding:16px 0;border-bottom:1px solid var(--line)}
@@ -152,10 +188,27 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
 .cd-t{margin-top:10px;font:400 1.35rem/1.15 var(--display);overflow-wrap:anywhere}
 .cd-d{color:var(--gold);font-size:.84rem}
 .cd .icon-btn{position:absolute;top:12px;right:12px}
-.mem{display:grid;grid-template-columns:minmax(4.6rem,6.5rem) minmax(0,1fr) auto;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
-.mem time{font:italic 400 1.1rem/1.2 var(--display);color:var(--gold)}
+
+/* Recuerdos con Fotos */
+.mem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:14px;margin-top:16px}
+.mem-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+.mem-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.mem-body{padding:14px 16px;display:flex;flex-direction:column;gap:4px;flex:1}
+.mem-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mem-card time{font:italic 400 .98rem/1.2 var(--display);color:var(--gold)}
 .mem-t{font:400 1.3rem/1.15 var(--display);overflow-wrap:anywhere}
-.mem-n{margin-top:4px;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
+.mem-n{margin-top:4px;color:var(--ink-2);font-size:.88rem;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Cartitas */
+.letter-list{display:grid;gap:12px;margin-top:16px}
+.letter{padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:grid;gap:8px}
+.letter.pinned{border-color:var(--rose-deep);background:linear-gradient(135deg,rgba(224,154,173,.09),var(--surface))}
+.letter-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.letter-from{font-size:.76rem;letter-spacing:.07em;text-transform:uppercase;color:var(--rose);font-weight:600}
+.letter-date{font-size:.78rem;color:var(--ink-3)}
+.letter-body{font:italic 400 1.22rem/1.4 var(--display);color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Votos */
 .poll{display:grid;gap:14px;padding:18px;margin-top:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 .poll-q{font:400 1.45rem/1.15 var(--display);overflow-wrap:anywhere}
 .poll-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
@@ -178,13 +231,14 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
   .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--rose)}
   .toast{bottom:28px}
 }
+@media (max-width:520px){
+  .mc-reviews{grid-template-columns:1fr}
+}
 @media (max-width:420px){
   .ev{grid-template-columns:3.4rem 10px minmax(0,1fr) auto;gap:10px}
   .td{grid-template-columns:auto minmax(0,1fr) auto}
   .td .who{grid-column:2;justify-self:start}
   .td .row-actions{grid-row:1;grid-column:3}
-  .mem{grid-template-columns:minmax(0,1fr) auto}
-  .mem time{grid-column:1/-1}
 }
 @media (prefers-reduced-motion:no-preference){
   .btn,.chip,.icon-btn,.seg-b,.opt{transition:background-color .15s,border-color .15s,color .15s,filter .15s}
@@ -206,6 +260,7 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
     <button type="button" class="icon-btn" id="btn-names" aria-label="Cambiar los nombres" aria-expanded="false" hidden><span id="ic-pencil"></span></button>
   </header>
   <div class="ribbon" id="ribbon" hidden></div>
+  <div id="pinned-box" hidden></div>
   <div class="note" id="offline" hidden>Falta pegar la configuración de Firebase en el archivo (el bloque firebaseConfig, al inicio del script).</div>
   <section class="login" id="login" hidden>
     <h2>Entrar</h2>
@@ -216,10 +271,13 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
   <div id="shell" hidden>
 
   <section class="names" id="names" hidden>
-    <p>Para saber a quién le toca cada pendiente.</p>
+    <p>Configura sus nombres y selecciona quién eres en este dispositivo para tus reseñas y cartitas.</p>
     <form class="form" id="f-names" autocomplete="off">
       <div class="f"><label class="cap" for="name-a">Persona 1</label><input id="name-a" type="text" maxlength="24"></div>
       <div class="f"><label class="cap" for="name-b">Persona 2</label><input id="name-b" type="text" maxlength="24"></div>
+      <div class="f"><label class="cap" for="who-am-i">En este celular soy</label>
+        <select id="who-am-i"><option value="a">Persona 1</option><option value="b">Persona 2</option></select>
+      </div>
       <button class="btn" type="submit" style="align-self:flex-end">Guardar</button>
       <button class="btn ghost" type="button" id="btn-out" style="align-self:flex-end">Salir de la cuenta</button>
     </form>
@@ -227,7 +285,7 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
 
   <nav class="tabs" role="tablist" aria-label="Secciones">
     <button class="tab" role="tab" data-tab="hoy" aria-selected="true" type="button"><span data-ic="calendar"></span>Hoy</button>
-    <button class="tab" role="tab" data-tab="ver" aria-selected="false" type="button"><span data-ic="tv"></span>Ver</button>
+    <button class="tab" role="tab" data-tab="ver" aria-selected="false" type="button"><span data-ic="tv"></span>Catálogo</button>
     <button class="tab" role="tab" data-tab="planes" aria-selected="false" type="button"><span data-ic="pin"></span>Planes</button>
     <button class="tab" role="tab" data-tab="pendientes" aria-selected="false" type="button"><span data-ic="list"></span>Pendientes</button>
     <button class="tab" role="tab" data-tab="nosotros" aria-selected="false" type="button"><span data-ic="heart"></span>Nosotros</button>
@@ -254,26 +312,44 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
       <ul class="list" id="ev-list"></ul>
     </section>
 
-    <!-- VER -->
+    <!-- CATÁLOGO METACRITIC -->
     <section class="panel" id="tab-ver" hidden>
-      <h2>Series, animes y películas</h2>
-      <p class="lead">Lo que quieren ver, lo que están viendo y lo que ya terminaron.</p>
+      <h2>Nuestro Catálogo</h2>
+      <p class="lead">Series, animes, películas y juegos con puntuación individual y promedio de pareja.</p>
       <form class="form" id="f-watch" autocomplete="off">
-        <div class="f"><label class="cap" for="w-title">Título</label><input id="w-title" type="text" required maxlength="80" placeholder="Nombre de la serie o anime"></div>
-        <div class="f-sm"><label class="cap" for="w-kind">Tipo</label>
-          <select id="w-kind"><option value="serie">Serie</option><option value="anime">Anime</option><option value="pelicula">Película</option></select></div>
-        <div class="f-sm"><label class="cap" for="w-plat">Plataforma</label><input id="w-plat" type="text" maxlength="30" list="plats" placeholder="Netflix…">
-          <datalist id="plats"><option value="Netflix"><option value="Crunchyroll"><option value="Disney+"><option value="Prime Video"><option value="Max"><option value="Apple TV+"><option value="YouTube"></datalist></div>
-        <button class="btn" type="submit">Agregar</button>
+        <div class="f"><label class="cap" for="w-title">Título</label><input id="w-title" type="text" required maxlength="80" placeholder="Ej. Chainsaw Man, Zelda, Dune…"></div>
+        <div class="f-sm"><label class="cap" for="w-kind">Categoría</label>
+          <select id="w-kind">
+            <option value="serie">Serie</option>
+            <option value="anime">Anime</option>
+            <option value="pelicula">Película</option>
+            <option value="juego">Videojuego</option>
+          </select>
+        </div>
+        <div class="f-sm"><label class="cap" for="w-plat">Plataforma</label><input id="w-plat" type="text" maxlength="30" list="plats" placeholder="Crunchyroll, Xbox…">
+          <datalist id="plats"><option value="Netflix"><option value="Crunchyroll"><option value="Disney+"><option value="Prime Video"><option value="Max"><option value="Xbox"><option value="Switch"><option value="PC"></datalist>
+        </div>
+        <div class="f-wide"><label class="cap" for="w-cover">Portada (URL opcional o usa Buscar Carátula)</label><input id="w-cover" type="url" maxlength="400" placeholder="https://…"></div>
+        <button class="btn" type="submit">Agregar al catálogo</button>
+        <button class="btn ghost" type="button" id="btn-search-api">Buscar carátula</button>
       </form>
+      <div class="api-box" id="api-box" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="pick-k" id="api-status">Buscando…</span>
+          <button type="button" class="icon-btn" id="api-close">✕</button>
+        </div>
+        <div class="api-results" id="api-results"></div>
+      </div>
+
+      <div class="chips filters" id="w-kind-filters" role="group" aria-label="Filtrar por tipo"></div>
       <div class="chips filters" id="w-filters" role="group" aria-label="Filtrar por estado"></div>
-      <div style="margin-top:14px"><button type="button" class="btn ghost" id="btn-pick">¿Qué vemos hoy?</button></div>
+      <div style="margin-top:14px"><button type="button" class="btn ghost" id="btn-pick">¿Qué vemos o jugamos hoy?</button></div>
       <div class="pick" id="pick" hidden>
         <p class="pick-k">Hoy toca</p>
         <p class="pick-t" id="pick-t"></p>
         <p class="pick-m" id="pick-m"></p>
         <div class="chips">
-          <button type="button" class="btn" id="pick-go" hidden>Empezar a verla</button>
+          <button type="button" class="btn" id="pick-go" hidden>Empezar</button>
           <button type="button" class="btn ghost" id="pick-again" hidden>Sortear otra vez</button>
         </div>
       </div>
@@ -310,14 +386,38 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
     <!-- NOSOTROS -->
     <section class="panel" id="tab-nosotros" hidden>
       <h2>Nosotros</h2>
-      <p class="lead">Fechas que esperan, momentos que guardan y decisiones que toman juntos.</p>
+      <p class="lead">Cartitas, fotos, fechas especiales y decisiones que toman juntos.</p>
       <div class="chips subtabs" role="tablist" aria-label="Apartados de Nosotros">
-        <button type="button" class="chip on" data-sub="cuenta" role="tab">Cuenta regresiva</button>
-        <button type="button" class="chip" data-sub="recuerdos" role="tab">Recuerdos</button>
+        <button type="button" class="chip on" data-sub="cartas" role="tab">Cartitas</button>
+        <button type="button" class="chip" data-sub="recuerdos" role="tab">Recuerdos y Fotos</button>
+        <button type="button" class="chip" data-sub="cuenta" role="tab">Cuenta regresiva</button>
         <button type="button" class="chip" data-sub="votos" role="tab">Votación rápida</button>
       </div>
 
-      <div id="sub-cuenta">
+      <!-- CARTITAS -->
+      <div id="sub-cartas">
+        <form class="form" id="f-letter" autocomplete="off">
+          <div class="f-wide"><label class="cap" for="lt-body">Escribe una nota o cartita</label><textarea id="lt-body" required maxlength="600" placeholder="Un mensaje bonito para que lo lea cuando entre…"></textarea></div>
+          <div class="f-wide chips"><button type="button" class="chip" id="lt-pin" aria-pressed="true">Fijar arriba de la pantalla principal</button></div>
+          <button class="btn" type="submit">Enviar cartita</button>
+        </form>
+        <div class="letter-list" id="lt-list"></div>
+      </div>
+
+      <!-- RECUERDOS Y FOTOS -->
+      <div id="sub-recuerdos" hidden>
+        <form class="form" id="f-mem" autocomplete="off">
+          <div class="f"><label class="cap" for="m-title">Momento</label><input id="m-title" type="text" required maxlength="80" placeholder="Nuestra salida al café"></div>
+          <div class="f-sm"><label class="cap" for="m-date">Fecha</label><input id="m-date" type="date" required></div>
+          <div class="f-wide"><label class="cap" for="m-photo">Foto (opcional, se comprime automático)</label><input id="m-photo" type="file" accept="image/*"></div>
+          <div class="f-wide"><label class="cap" for="m-note">Nota</label><textarea id="m-note" maxlength="600" placeholder="Qué pasó, qué sintieron, qué no quieren olvidar"></textarea></div>
+          <button class="btn" type="submit">Guardar recuerdo</button>
+        </form>
+        <div class="mem-grid" id="m-list"></div>
+      </div>
+
+      <!-- CUENTA REGRESIVA -->
+      <div id="sub-cuenta" hidden>
         <form class="form" id="f-cd" autocomplete="off">
           <div class="f"><label class="cap" for="cd-title">Qué esperan</label><input id="cd-title" type="text" required maxlength="60" placeholder="Aniversario, viaje, concierto…"></div>
           <div class="f-sm"><label class="cap" for="cd-date">Fecha</label><input id="cd-date" type="date" required></div>
@@ -327,16 +427,7 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
         <div class="cd-grid" id="cd-list"></div>
       </div>
 
-      <div id="sub-recuerdos" hidden>
-        <form class="form" id="f-mem" autocomplete="off">
-          <div class="f"><label class="cap" for="m-title">Recuerdo</label><input id="m-title" type="text" required maxlength="80" placeholder="Nuestro primer viaje"></div>
-          <div class="f-sm"><label class="cap" for="m-date">Fecha</label><input id="m-date" type="date" required></div>
-          <div class="f-wide"><label class="cap" for="m-note">Nota</label><textarea id="m-note" maxlength="600" placeholder="Qué pasó, qué sintieron, qué no quieren olvidar"></textarea></div>
-          <button class="btn" type="submit">Guardar recuerdo</button>
-        </form>
-        <ul class="list" id="m-list"></ul>
-      </div>
-
+      <!-- VOTACIÓN -->
       <div id="sub-votos" hidden>
         <form class="form" id="f-poll" autocomplete="off">
           <div class="f-wide"><label class="cap" for="v-q">Pregunta</label><input id="v-q" type="text" required maxlength="80" placeholder="¿Qué cenamos hoy?"></div>
@@ -358,27 +449,12 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* Pega aquí los datos de tu app web de Firebase (Configuración del proyecto > Tus apps). */
 const firebaseConfig = {
   apiKey: 'AIzaSyAZQFSKasHuCwg1I--hrvfT75nQJvdAyxU',
   authDomain: 'citas-e16ea.firebaseapp.com',
   projectId: 'citas-e16ea',
   appId: '1:922843428138:web:1d0df86ffa79eb414a5a53'
 };
-
-/* Reglas de Firestore (Firestore Database > Reglas). Cambia los dos correos por los de ustedes:
-
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['correo-de-gary@gmail.com', 'correo-de-yumi@gmail.com'];
-    }
-  }
-}
-*/
 
 (function () {
   'use strict';
@@ -449,19 +525,23 @@ service cloud.firestore {
     casa: { l: 'Casa', c: 'var(--sage)' },
     otro: { l: 'Otro', c: 'var(--ink-3)' }
   };
-  var KINDS = { serie: 'Serie', anime: 'Anime', pelicula: 'Película' };
-  var WSTAT = [['por-ver', 'Por ver'], ['viendo', 'Viendo'], ['terminado', 'Terminado']];
+  var KINDS = { serie: 'Serie', anime: 'Anime', pelicula: 'Película', juego: 'Videojuego' };
+  var WSTAT = [['por-ver', 'Por ver'], ['viendo', 'En curso'], ['terminado', 'Terminado']];
   var PSTAT = [['idea', 'Idea'], ['agendada', 'Agendada'], ['hecha', 'Hecha']];
   var IDEAS = ['Cena especial en casa', 'Picnic en el parque', 'Noche de cine', 'Caminata al atardecer', 'Cocinar algo nuevo juntos', 'Noche de juegos', 'Café y libros', 'Maratón en pijama'];
   var WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
+  var savedMe = 'a';
+  try { savedMe = localStorage.getItem('nd-me') || 'a'; } catch (e) {}
+
   var S = {
-    events: [], watch: [], plans: [], todos: [], memories: [], countdowns: [], polls: [],
+    events: [], watch: [], plans: [], todos: [], memories: [], countdowns: [], polls: [], letters: [],
     loaded: {},
     settings: { nameA: 'Gary', nameB: 'Yumi' },
-    day: todayISO(), tab: 'hoy', sub: 'cuenta',
-    evCat: 'comida', wf: 'all', tf: 'all', yearly: false,
-    uid: null, armed: null, pickId: null, ties: {}
+    me: savedMe,
+    day: todayISO(), tab: 'hoy', sub: 'cartas',
+    evCat: 'comida', wf: 'all', wkf: 'all', tf: 'all', yearly: false, pinLetter: true,
+    uid: null, armed: null, pickId: null, ties: {}, editingRev: null
   };
   var db = null, auth = null, unsubs = [], armTimer = 0, toastTimer = 0, pickTimer = 0;
 
@@ -494,6 +574,30 @@ service cloud.firestore {
   function upd(col, id, data) { var p = col + '/' + id; return seq(p, function () { return updateDoc(doc(db, p), data); }); }
   function del(col, id) { var p = col + '/' + id; return seq(p, function () { return deleteDoc(doc(db, p)); }); }
 
+  /* ---------- Compresión de Fotos ---------- */
+  function compressImage(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) return resolve('');
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          var maxW = 800, w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.onerror = reject;
+        img.src = ev.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   /* ---------- Piezas ---------- */
   function checkBtn(on, fn) {
     return h('button', { type: 'button', class: 'icon-btn ok' + (on ? ' on' : ''), 'aria-pressed': String(!!on), 'aria-label': on ? 'Marcar como pendiente' : 'Marcar como hecha', onclick: fn }, icon('check'));
@@ -520,7 +624,6 @@ service cloud.firestore {
   function renderHoy() {
     var d = parse(S.day);
     $('#day-label').textContent = fmtLong(d);
-    // semana
     var week = $('#week');
     week.replaceChildren();
     var dow = (d.getDay() + 6) % 7, start = addDays(S.day, -dow), has = {};
@@ -535,7 +638,6 @@ service cloud.firestore {
         }, h('span', { class: 'wd-n', text: WD[i] }), h('span', { class: 'wd-d', text: dd.getDate() }), h('span', { class: 'wd-dot' + (has[s] ? ' has' : '') })));
       })(addDays(start, i), i);
     }
-    // lista
     var items = S.events.filter(function (e) { return e.date === S.day; })
       .sort(function (a, b) { return (a.time || '').localeCompare(b.time || '') || (a.createdAt || 0) - (b.createdAt || 0); });
     var ul = $('#ev-list');
@@ -574,36 +676,176 @@ service cloud.firestore {
     });
   }
 
-  /* ---------- Ver ---------- */
+  /* ---------- Catálogo Metacritic ---------- */
+  function searchCoverAPI() {
+    var q = $('#w-title').value.trim();
+    var kind = $('#w-kind').value;
+    if (!q) { toast('Escribe primero el título para buscar su carátula.'); $('#w-title').focus(); return; }
+    var box = $('#api-box'), res = $('#api-results'), st = $('#api-status');
+    box.hidden = false;
+    res.replaceChildren();
+    st.textContent = 'Buscando carátulas…';
+
+    var url = '';
+    if (kind === 'anime') {
+      url = 'https://api.jikan.moe/v4/anime?q=' + encodeURIComponent(q) + '&limit=6';
+    } else if (kind === 'serie') {
+      url = 'https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(q);
+    } else {
+      url = 'https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=' + (kind === 'pelicula' ? 'movie' : 'software') + '&limit=6';
+    }
+
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var items = [];
+      if (kind === 'anime' && data.data) {
+        items = data.data.map(function (a) { return { title: a.title, img: a.images && a.images.jpg && a.images.jpg.image_url }; });
+      } else if (kind === 'serie' && Array.isArray(data)) {
+        items = data.slice(0, 6).map(function (s) { return { title: s.show.name, img: s.show.image && s.show.image.medium }; });
+      } else if (data.results) {
+        items = data.results.map(function (r) { return { title: r.trackName, img: (r.artworkUrl100 || '').replace('100x100', '400x400') }; });
+      }
+      items = items.filter(function (x) { return x.img; });
+      if (!items.length) { st.textContent = 'Sin resultados con imagen. Puedes pegar un enlace manual.'; return; }
+      st.textContent = 'Toca una carátula para seleccionarla:';
+      items.forEach(function (it) {
+        res.append(h('button', {
+          type: 'button', class: 'api-item',
+          onclick: function () {
+            $('#w-title').value = it.title;
+            $('#w-cover').value = it.img;
+            box.hidden = true;
+            toast('Carátula seleccionada');
+          }
+        }, h('img', { src: it.img, alt: it.title }), h('span', { text: it.title })));
+      });
+    }).catch(function () {
+      st.textContent = 'No se pudo conectar al buscador. Pega una URL de imagen manualmente.';
+    });
+  }
+
+  function calcMetacritic(w) {
+    var sa = typeof w.scoreA === 'number' ? w.scoreA : null;
+    var sb = typeof w.scoreB === 'number' ? w.scoreB : null;
+    if (sa === null && sb === null && w.rating > 0) {
+      sa = w.rating * 20;
+    }
+    var scores = [sa, sb].filter(function (v) { return v !== null; });
+    if (!scores.length) return { avg: null, cls: 'tbd', verdict: 'Sin calificar todavía', sub: 'Cada quien puede poner su nota del 0 al 100' };
+    var avg = Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length);
+    var cls = avg >= 75 ? 'green' : avg >= 50 ? 'yellow' : 'red';
+    var verdict = avg >= 85 ? 'Obra maestra de pareja' : avg >= 75 ? 'Aclamada por ambos' : avg >= 60 ? 'Entretenida / Recomendable' : avg >= 50 ? 'Opiniones divididas' : 'Decepción compartida';
+    var sub = scores.length === 2 ? 'Promedio entre ' + nm('a') + ' (' + sa + ') y ' + nm('b') + ' (' + sb + ')' : 'Falta la calificación de ' + (sa === null ? nm('a') : nm('b'));
+    return { avg: avg, cls: cls, verdict: verdict, sub: sub };
+  }
+
   function renderWatch() {
+    var kf = $('#w-kind-filters');
+    kf.replaceChildren();
+    kf.append(chip('Todo ' + S.watch.length, S.wkf === 'all', function () { S.wkf = 'all'; renderWatch(); }));
+    Object.keys(KINDS).forEach(function (k) {
+      var c = S.watch.filter(function (w) { return (w.kind || 'serie') === k; }).length;
+      kf.append(chip(KINDS[k] + 's ' + c, S.wkf === k, function () { S.wkf = k; renderWatch(); }));
+    });
+
     var f = $('#w-filters');
     f.replaceChildren();
-    var count = function (s) { return S.watch.filter(function (w) { return (w.status || 'por-ver') === s; }).length; };
-    f.append(chip('Todos ' + S.watch.length, S.wf === 'all', function () { S.wf = 'all'; renderWatch(); }));
+    var byKind = S.watch.filter(function (w) { return S.wkf === 'all' || (w.kind || 'serie') === S.wkf; });
+    var count = function (s) { return byKind.filter(function (w) { return (w.status || 'por-ver') === s; }).length; };
+    f.append(chip('Todos estados ' + byKind.length, S.wf === 'all', function () { S.wf = 'all'; renderWatch(); }));
     WSTAT.forEach(function (s) { f.append(chip(s[1] + ' ' + count(s[0]), S.wf === s[0], function () { S.wf = s[0]; renderWatch(); })); });
 
     var order = { viendo: 0, 'por-ver': 1, terminado: 2 };
-    var list = S.watch.filter(function (w) { return S.wf === 'all' || (w.status || 'por-ver') === S.wf; })
+    var list = byKind.filter(function (w) { return S.wf === 'all' || (w.status || 'por-ver') === S.wf; })
       .sort(function (a, b) { return order[a.status || 'por-ver'] - order[b.status || 'por-ver'] || (b.createdAt || 0) - (a.createdAt || 0); });
     var ul = $('#w-list');
     ul.replaceChildren();
-    if (!list.length) ul.append(emptyMsg('watch', S.watch.length ? 'No hay nada en este estado.' : 'Aquí van las series, animes y películas que quieran ver. Agrega la primera arriba.'));
+    if (!list.length) ul.append(emptyMsg('watch', S.watch.length ? 'No hay títulos con estos filtros.' : 'Agrega series, animes, películas o juegos arriba para armar su catálogo.'));
+
     list.forEach(function (w) {
       var status = w.status || 'por-ver', season = w.season || 1, ep = w.ep || 0;
+      var mc = calcMetacritic(w);
+      var showProgress = status === 'viendo' && (w.kind === 'serie' || w.kind === 'anime');
+
+      var revCard = function (whoKey) {
+        var score = whoKey === 'a' ? w.scoreA : w.scoreB;
+        var text = whoKey === 'a' ? w.revA : w.revB;
+        var isEditing = S.editingRev === (w.id + ':' + whoKey);
+        var color = whoKey === 'a' ? 'var(--rose)' : 'var(--sky)';
+
+        var editForm = null;
+        if (isEditing) {
+          var inpScore = h('input', { type: 'number', min: '0', max: '100', placeholder: '0-100', value: typeof score === 'number' ? score : '' });
+          var inpText = h('textarea', { maxlength: '300', placeholder: 'Tu reseña individual…' }, text || '');
+          editForm = h('div', { class: 'rev-edit' },
+            h('div', { class: 'rev-edit-row' },
+              h('span', { class: 'step-l', text: 'Nota (0-100):' }),
+              inpScore,
+              h('button', {
+                type: 'button', class: 'btn sm',
+                onclick: function () {
+                  var raw = inpScore.value.trim();
+                  var val = raw === '' ? null : Math.max(0, Math.min(100, Number(raw)));
+                  var patch = {};
+                  if (whoKey === 'a') { patch.scoreA = val; patch.revA = inpText.value.trim(); }
+                  else { patch.scoreB = val; patch.revB = inpText.value.trim(); }
+                  S.editingRev = null;
+                  run(function () { return upd('watch', w.id, patch); });
+                }
+              }, 'Guardar'),
+              h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { S.editingRev = null; renderWatch(); } }, 'Cancelar')
+            ),
+            inpText
+          );
+        }
+
+        return h('div', { class: 'rev-card' },
+          h('div', { class: 'rev-head' },
+            h('span', { class: 'rev-who', style: 'color:' + color, text: nm(whoKey) }),
+            h('div', { style: 'display:flex;gap:6px;align-items:center' },
+              h('span', { class: 'rev-score', text: typeof score === 'number' ? score + ' / 100' : 'Sin nota' }),
+              !isEditing ? h('button', {
+                type: 'button', class: 'icon-btn', style: 'height:26px;min-width:26px;font-size:.72rem',
+                onclick: function () { S.editingRev = w.id + ':' + whoKey; renderWatch(); }
+              }, 'Editar') : null
+            )
+          ),
+          text ? h('p', { class: 'rev-text', text: text }) : h('p', { class: 'rev-empty', text: 'Aún no escribe reseña.' }),
+          editForm
+        );
+      };
+
       ul.append(h('li', { class: 'w' },
-        h('div', { class: 'w-head' },
-          h('div', {}, h('h3', { class: 'w-title', text: w.title }), h('p', { class: 'w-meta', text: [KINDS[w.kind] || 'Serie', w.platform].filter(Boolean).join(' · ') })),
-          delBtn('watch', w.id)),
-        h('div', { class: 'seg', role: 'group', 'aria-label': 'Estado' }, WSTAT.map(function (s) {
-          return h('button', { type: 'button', class: 'seg-b' + (status === s[0] ? ' on' : ''), 'aria-pressed': String(status === s[0]),
-            onclick: function () { if (status !== s[0]) run(function () { return upd('watch', w.id, { status: s[0] }); }); } }, s[1]);
-        })),
-        status === 'viendo' && w.kind !== 'pelicula' ? h('div', { class: 'steps' },
-          stepper('Temporada', season, 1, function (v) { run(function () { return upd('watch', w.id, { season: v }); }); }),
-          stepper('Episodio', ep, 0, function (v) { run(function () { return upd('watch', w.id, { ep: v }); }); })) : null,
-        status === 'terminado' ? stars(w) : null));
+        h('div', { class: 'w-top' },
+          w.cover ? h('img', { class: 'w-cover', src: w.cover, alt: w.title }) : h('div', { class: 'w-cover-empty', text: KINDS[w.kind] || 'Título' }),
+          h('div', {},
+            h('h3', { class: 'w-title', text: w.title }),
+            h('p', { class: 'w-meta', text: [KINDS[w.kind] || 'Serie', w.platform].filter(Boolean).join(' · ') }),
+            h('div', { class: 'w-controls', style: 'margin-top:10px' },
+              h('div', { class: 'seg', role: 'group', 'aria-label': 'Estado' }, WSTAT.map(function (s) {
+                return h('button', { type: 'button', class: 'seg-b' + (status === s[0] ? ' on' : ''), 'aria-pressed': String(status === s[0]),
+                  onclick: function () { if (status !== s[0]) run(function () { return upd('watch', w.id, { status: s[0] }); }); } }, s[1]);
+              })),
+              showProgress ? h('div', { class: 'steps' },
+                stepper('Temp', season, 1, function (v) { run(function () { return upd('watch', w.id, { season: v }); }); }),
+                stepper('Ep', ep, 0, function (v) { run(function () { return upd('watch', w.id, { ep: v }); }); })) : null
+            )
+          ),
+          delBtn('watch', w.id)
+        ),
+        h('div', { class: 'mc-panel' },
+          h('div', { class: 'mc-header' },
+            h('div', { class: 'mc-badge ' + mc.cls, text: mc.avg !== null ? mc.avg : 'TBD' }),
+            h('div', { class: 'mc-summary' },
+              h('p', { class: 'mc-verdict', text: mc.verdict }),
+              h('p', { class: 'mc-sub', text: mc.sub })
+            )
+          ),
+          h('div', { class: 'mc-reviews' }, revCard('a'), revCard('b'))
+        )
+      ));
     });
   }
+
   function stepper(label, val, min, fn) {
     return h('div', { class: 'step' },
       h('span', { class: 'step-l', text: label }),
@@ -611,23 +853,14 @@ service cloud.firestore {
       h('span', { class: 'step-v', text: val }),
       h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Sumar ' + label.toLowerCase(), onclick: function () { fn(val + 1); } }, icon('plus')));
   }
-  function stars(w) {
-    var r = w.rating || 0, box = h('div', { class: 'stars', role: 'group', 'aria-label': 'Calificación' });
-    for (var i = 1; i <= 5; i++) {
-      (function (i) {
-        box.append(h('button', { type: 'button', class: 'star' + (i <= r ? ' on' : ''), 'aria-label': i + ' de 5 estrellas', 'aria-pressed': String(i <= r),
-          onclick: function () { run(function () { return upd('watch', w.id, { rating: r === i ? 0 : i }); }); } }, '★'));
-      })(i);
-    }
-    return box;
-  }
+
   function pickRandom() {
-    var pool = S.watch.filter(function (w) { return (w.status || 'por-ver') === 'por-ver'; });
+    var pool = S.watch.filter(function (w) { return (w.status || 'por-ver') === 'por-ver' && (S.wkf === 'all' || (w.kind || 'serie') === S.wkf); });
     var box = $('#pick'), t = $('#pick-t'), m = $('#pick-m'), go = $('#pick-go'), again = $('#pick-again');
     box.hidden = false;
     clearInterval(pickTimer);
     if (!pool.length) {
-      S.pickId = null; t.textContent = 'Todavía no hay nada por ver'; m.textContent = 'Agrega títulos con el estado «Por ver» y vuelve a sortear.'; go.hidden = true; again.hidden = true; return;
+      S.pickId = null; t.textContent = 'Nada pendiente en este filtro'; m.textContent = 'Agrega títulos con el estado «Por ver» y vuelve a sortear.'; go.hidden = true; again.hidden = true; return;
     }
     var final = pool[Math.floor(Math.random() * pool.length)];
     var show = function (w) {
@@ -685,6 +918,11 @@ service cloud.firestore {
     var sel = $('#td-who'), v = sel.value || 'both';
     sel.replaceChildren(h('option', { value: 'both', text: 'Ambos' }), h('option', { value: 'a', text: S.settings.nameA }), h('option', { value: 'b', text: S.settings.nameB }));
     sel.value = v;
+    var meSel = $('#who-am-i');
+    if (meSel) {
+      meSel.replaceChildren(h('option', { value: 'a', text: S.settings.nameA }), h('option', { value: 'b', text: S.settings.nameB }));
+      meSel.value = S.me;
+    }
   }
   var WHOC = { a: 'var(--rose)', b: 'var(--sky)', both: 'var(--gold)' };
   function renderTodos() {
@@ -710,7 +948,58 @@ service cloud.firestore {
     });
   }
 
-  /* ---------- Nosotros ---------- */
+  /* ---------- Nosotros: Cartitas ---------- */
+  function renderLetters() {
+    var list = S.letters.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var pinned = list.find(function (l) { return l.pinned; });
+    var pBox = $('#pinned-box');
+    if (pinned) {
+      pBox.hidden = false;
+      pBox.replaceChildren(h('div', { class: 'pinned-letter' },
+        h('div', {},
+          h('p', { class: 'pinned-letter-k', text: 'Nota fijada de ' + nm(pinned.from || 'a') }),
+          h('p', { class: 'pinned-letter-b', text: pinned.body }),
+          h('p', { class: 'pinned-letter-m', text: fmtShort(new Date(pinned.createdAt || Date.now())) })
+        ),
+        h('button', {
+          type: 'button', class: 'icon-btn', 'aria-label': 'Desfijar nota',
+          onclick: function () { run(function () { return upd('letters', pinned.id, { pinned: false }); }); }
+        }, '✕')
+      ));
+    } else {
+      pBox.hidden = true;
+    }
+
+    var box = $('#lt-list');
+    box.replaceChildren();
+    if (!list.length) {
+      box.append(h('p', { class: 'empty', text: S.loaded.letters ? 'Todavía no hay cartitas. Escribe la primera arriba.' : 'Cargando…' }));
+      return;
+    }
+    list.forEach(function (l) {
+      box.append(h('div', { class: 'letter' + (l.pinned ? ' pinned' : '') },
+        h('div', { class: 'letter-head' },
+          h('span', { class: 'letter-from', text: 'De ' + nm(l.from || 'a') }),
+          h('div', { class: 'row-actions' },
+            h('span', { class: 'letter-date', text: fmtShort(new Date(l.createdAt || Date.now())) }),
+            h('button', {
+              type: 'button', class: 'icon-btn' + (l.pinned ? ' armed' : ''),
+              onclick: function () {
+                run(function () {
+                  if (!l.pinned && pinned) upd('letters', pinned.id, { pinned: false });
+                  return upd('letters', l.id, { pinned: !l.pinned });
+                });
+              }
+            }, l.pinned ? 'Fijada' : 'Fijar'),
+            delBtn('letters', l.id)
+          )
+        ),
+        h('p', { class: 'letter-body', text: l.body })
+      ));
+    });
+  }
+
+  /* ---------- Nosotros: Cuenta regresiva, Recuerdos y Votos ---------- */
   function nextDate(c) {
     var t = todayISO(), d = c.date, years = 0;
     if (c.yearly) {
@@ -741,7 +1030,6 @@ service cloud.firestore {
         h('span', { class: 'cd-t', text: o.c.title }),
         h('span', { class: 'cd-d', text: dateLine })));
     });
-    // cinta superior
     var next = list.filter(function (o) { return o.n.days >= 0; })[0], rb = $('#ribbon');
     if (!next) { rb.hidden = true; return; }
     rb.hidden = false;
@@ -752,14 +1040,24 @@ service cloud.firestore {
   }
   function renderMemories() {
     var list = S.memories.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0); });
-    var ul = $('#m-list');
-    ul.replaceChildren();
-    if (!list.length) ul.append(emptyMsg('memories', 'Guarden aquí los momentos que quieren recordar: una salida, una frase, un día cualquiera.'));
+    var box = $('#m-list');
+    box.replaceChildren();
+    if (!list.length) {
+      box.append(h('p', { class: 'empty', text: S.loaded.memories ? 'Guarden aquí sus fotos y momentos especiales.' : 'Cargando…' }));
+      return;
+    }
     list.forEach(function (m) {
-      ul.append(h('li', { class: 'mem' },
-        h('time', { text: m.date ? fmtShort(parse(m.date)) : '' }),
-        h('div', {}, h('h3', { class: 'mem-t', text: m.title }), m.note ? h('p', { class: 'mem-n', text: m.note }) : null),
-        delBtn('memories', m.id)));
+      box.append(h('article', { class: 'mem-card' },
+        m.photo ? h('img', { class: 'mem-img', src: m.photo, alt: m.title, loading: 'lazy' }) : null,
+        h('div', { class: 'mem-body' },
+          h('div', { class: 'mem-top' },
+            h('time', { text: m.date ? fmtShort(parse(m.date)) : '' }),
+            delBtn('memories', m.id)
+          ),
+          h('h3', { class: 'mem-t', text: m.title }),
+          m.note ? h('p', { class: 'mem-n', text: m.note }) : null
+        )
+      ));
     });
   }
   function renderPolls() {
@@ -797,7 +1095,7 @@ service cloud.firestore {
   }
 
   function renderAll() {
-    renderHoy(); renderWatch(); renderPlans(); renderTodos(); renderCountdowns(); renderMemories(); renderPolls();
+    renderHoy(); renderWatch(); renderPlans(); renderTodos(); renderCountdowns(); renderMemories(); renderPolls(); renderLetters();
   }
 
   /* ---------- Navegación ---------- */
@@ -811,7 +1109,7 @@ service cloud.firestore {
   function setSub(s) {
     S.sub = s;
     $$('[data-sub]').forEach(function (b) { b.classList.toggle('on', b.dataset.sub === s); b.setAttribute('aria-selected', String(b.dataset.sub === s)); });
-    ['cuenta', 'recuerdos', 'votos'].forEach(function (k) { $('#sub-' + k).hidden = k !== s; });
+    ['cartas', 'recuerdos', 'cuenta', 'votos'].forEach(function (k) { $('#sub-' + k).hidden = k !== s; });
   }
 
   /* ---------- Formularios ---------- */
@@ -837,12 +1135,19 @@ service cloud.firestore {
       var p = $('#names'), open = p.hidden;
       p.hidden = !open;
       this.setAttribute('aria-expanded', String(open));
-      if (open) { $('#name-a').value = S.settings.nameA; $('#name-b').value = S.settings.nameB; $('#name-a').focus(); }
+      if (open) {
+        $('#name-a').value = S.settings.nameA;
+        $('#name-b').value = S.settings.nameB;
+        $('#who-am-i').value = S.me;
+        $('#name-a').focus();
+      }
     });
     onSubmit('#f-names', function () {
       var a = $('#name-a').value.trim() || S.settings.nameA, b = $('#name-b').value.trim() || S.settings.nameB;
+      S.me = $('#who-am-i').value;
+      try { localStorage.setItem('nd-me', S.me); } catch (e) {}
       return run(function () { return seq('settings/main', function () { return setDoc(doc(db, 'settings/main'), { nameA: a, nameB: b }); }); }).then(function (ok) {
-        if (ok) { $('#names').hidden = true; $('#btn-names').setAttribute('aria-expanded', 'false'); toast('Nombres guardados'); }
+        if (ok) { $('#names').hidden = true; $('#btn-names').setAttribute('aria-expanded', 'false'); toast('Preferencias guardadas'); }
         return ok;
       });
     });
@@ -855,21 +1160,41 @@ service cloud.firestore {
         return ok;
       });
     });
+
+    $('#btn-search-api').addEventListener('click', searchCoverAPI);
+    $('#api-close').addEventListener('click', function () { $('#api-box').hidden = true; });
+
     onSubmit('#f-watch', function () {
       var title = $('#w-title').value.trim();
       if (!title) return false;
-      return run(function () { return add('watch', { title: title, kind: $('#w-kind').value, platform: $('#w-plat').value.trim(), status: 'por-ver', season: 1, ep: 0, rating: 0 }); }).then(function (ok) {
-        if (ok) { $('#w-title').value = ''; $('#w-title').focus(); }
+      return run(function () {
+        return add('watch', {
+          title: title,
+          kind: $('#w-kind').value,
+          platform: $('#w-plat').value.trim(),
+          cover: $('#w-cover').value.trim(),
+          status: 'por-ver',
+          season: 1,
+          ep: 0,
+          scoreA: null,
+          scoreB: null,
+          revA: '',
+          revB: ''
+        });
+      }).then(function (ok) {
+        if (ok) { $('#w-title').value = ''; $('#w-cover').value = ''; $('#api-box').hidden = true; $('#w-title').focus(); }
         return ok;
       });
     });
+
     $('#btn-pick').addEventListener('click', pickRandom);
     $('#pick-again').addEventListener('click', pickRandom);
     $('#pick-go').addEventListener('click', function () {
       var id = S.pickId;
       if (!id) return;
-      run(function () { return upd('watch', id, { status: 'viendo' }); }).then(function (ok) { if (ok) { $('#pick').hidden = true; toast('Pasó a «Viendo»'); } });
+      run(function () { return upd('watch', id, { status: 'viendo' }); }).then(function (ok) { if (ok) { $('#pick').hidden = true; toast('Pasó a «En curso»'); } });
     });
+
     onSubmit('#f-plan', function () {
       var title = $('#p-title').value.trim();
       if (!title) return false;
@@ -879,6 +1204,7 @@ service cloud.firestore {
         return ok;
       });
     });
+
     onSubmit('#f-todo', function () {
       var title = $('#td-title').value.trim();
       if (!title) return false;
@@ -887,6 +1213,28 @@ service cloud.firestore {
         return ok;
       });
     });
+
+    $('#lt-pin').classList.add('on');
+    $('#lt-pin').addEventListener('click', function () {
+      S.pinLetter = !S.pinLetter;
+      this.classList.toggle('on', S.pinLetter);
+      this.setAttribute('aria-pressed', String(S.pinLetter));
+    });
+    onSubmit('#f-letter', function () {
+      var body = $('#lt-body').value.trim();
+      if (!body) return false;
+      return run(function () {
+        if (S.pinLetter) {
+          var prevPinned = S.letters.find(function (l) { return l.pinned; });
+          if (prevPinned) upd('letters', prevPinned.id, { pinned: false });
+        }
+        return add('letters', { body: body, from: S.me, pinned: S.pinLetter });
+      }).then(function (ok) {
+        if (ok) { $('#lt-body').value = ''; toast('Cartita enviada'); }
+        return ok;
+      });
+    });
+
     $('#cd-yearly').addEventListener('click', function () {
       S.yearly = !S.yearly;
       this.classList.toggle('on', S.yearly);
@@ -900,14 +1248,19 @@ service cloud.firestore {
         return ok;
       });
     });
+
     onSubmit('#f-mem', function () {
       var title = $('#m-title').value.trim(), date = $('#m-date').value;
+      var file = $('#m-photo').files && $('#m-photo').files[0];
       if (!title || !date) return false;
-      return run(function () { return add('memories', { title: title, date: date, note: $('#m-note').value.trim() }); }).then(function (ok) {
-        if (ok) { $('#m-title').value = ''; $('#m-note').value = ''; }
+      return compressImage(file).then(function (photoData) {
+        return run(function () { return add('memories', { title: title, date: date, note: $('#m-note').value.trim(), photo: photoData }); });
+      }).then(function (ok) {
+        if (ok) { $('#m-title').value = ''; $('#m-note').value = ''; $('#m-photo').value = ''; toast('Recuerdo guardado'); }
         return ok;
       });
     });
+
     onSubmit('#f-poll', function () {
       var q = $('#v-q').value.trim(), a = $('#v-a').value.trim(), b = $('#v-b').value.trim();
       if (!q || !a || !b) return false;
@@ -920,7 +1273,7 @@ service cloud.firestore {
 
   /* ---------- Suscripciones ---------- */
   var errShown = false;
-  var COLS = ['events', 'watch', 'plans', 'todos', 'memories', 'countdowns', 'polls'];
+  var COLS = ['events', 'watch', 'plans', 'todos', 'memories', 'countdowns', 'polls', 'letters'];
   function listen(name) {
     unsubs.push(onSnapshot(collection(db, name), function (snap) {
       S[name] = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
@@ -940,7 +1293,7 @@ service cloud.firestore {
     unsubs.push(onSnapshot(doc(db, 'settings/main'), function (snap) {
       var d = snap.data() || {};
       S.settings = { nameA: d.nameA || 'Gary', nameB: d.nameB || 'Yumi' };
-      buildWho(); renderTodos(); renderCountdowns();
+      buildWho(); renderAll();
     }, function () {}));
     COLS.forEach(listen);
   }
