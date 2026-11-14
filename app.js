@@ -170,6 +170,33 @@ const firebaseConfig = {
     return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': String(!!on), onclick: fn }, label, extra || null);
   }
 
+  function renderRibbon() {
+    var rib = $('#ribbon');
+    var now = todayISO();
+    var upcoming = S.countdowns.map(function (c) {
+      var target = c.date;
+      if (c.yearly && target) {
+        var curYear = new Date().getFullYear();
+        var md = target.slice(5);
+        target = curYear + '-' + md;
+        if (dayDiff(now, target) < 0) target = (curYear + 1) + '-' + md;
+      }
+      return { title: c.title, diff: dayDiff(now, target) };
+    }).filter(function (c) { return c.diff >= 0; }).sort(function (a, b) { return a.diff - b.diff; });
+
+    if (!upcoming.length) {
+      rib.hidden = true;
+      return;
+    }
+    rib.hidden = false;
+    var next = upcoming[0];
+    rib.replaceChildren(
+      next.diff === 0
+        ? h('span', {}, '¡Hoy es ', h('b', { text: next.title }), '!')
+        : h('span', {}, 'Faltan ', h('b', { text: next.diff + ' ' + pl(next.diff, 'día', 'días') }), ' para ', h('b', { text: next.title }))
+    );
+  }
+
   function renderHoy() {
     var d = parse(S.day);
     $('#day-label').textContent = fmtLong(d);
@@ -228,12 +255,10 @@ const firebaseConfig = {
   function setDetectedPlatforms(plats, queryTitle) {
     var box = $('#detected-plats-box'), list = $('#detected-plats');
     list.replaceChildren();
-    
     var unique = [];
     (plats || []).forEach(function (p) { if (p && unique.indexOf(p) === -1) unique.push(p); });
-    
-    var defaultAnimeSites = ['JKanime', 'AnimeFLV', 'MonosChinos'];
-    defaultAnimeSites.forEach(function(site) {
+
+    ['JKanime', 'AnimeFLV', 'MonosChinos'].forEach(function (site) {
       if (unique.indexOf(site) === -1) unique.push(site);
     });
 
@@ -241,12 +266,12 @@ const firebaseConfig = {
     unique.forEach(function (p) {
       var isCustomWeb = ['JKanime', 'AnimeFLV', 'MonosChinos'].indexOf(p) !== -1;
       var chipClass = 'chip' + ($('#w-plat').value === p ? ' on' : '');
-      
+
       if (isCustomWeb && queryTitle) {
         var searchUrl = p === 'JKanime' ? 'https://jkanime.net/es/buscar/?q=' + encodeURIComponent(queryTitle)
                       : p === 'AnimeFLV' ? 'https://animeskak.com/browse?q=' + encodeURIComponent(queryTitle)
                       : 'https://monoschinos.com/animes?q=' + encodeURIComponent(queryTitle);
-        
+
         list.append(h('a', {
           href: searchUrl,
           target: '_blank',
@@ -285,12 +310,12 @@ const firebaseConfig = {
     var cleanQ = encodeURIComponent(query.trim());
 
     var pAnime = fetch('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=4')
-      .then(function(r) { return r.ok ? r.json() : { data: [] }; })
-      .then(function(d) {
-        return (d.data || []).map(function(a) {
+      .then(function (r) { return r.ok ? r.json() : { data: [] }; })
+      .then(function (d) {
+        return (d.data || []).map(function (a) {
           var plats = [];
           if (a.streaming) {
-            a.streaming.forEach(function(s) { if (s.name) plats.push(s.name); });
+            a.streaming.forEach(function (s) { if (s.name) plats.push(s.name); });
           }
           if (!plats.length) plats.push('Crunchyroll');
           return {
@@ -301,12 +326,12 @@ const firebaseConfig = {
             plats: plats
           };
         });
-      }).catch(function() { return []; });
+      }).catch(function () { return []; });
 
     var pSeries = fetch('https://api.tvmaze.com/search/shows?q=' + cleanQ)
-      .then(function(r) { return r.ok ? r.json() : []; })
-      .then(function(d) {
-        return (Array.isArray(d) ? d.slice(0, 4) : []).map(function(s) {
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (d) {
+        return (Array.isArray(d) ? d.slice(0, 4) : []).map(function (s) {
           var sh = s.show || {};
           var plats = [];
           if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
@@ -319,9 +344,9 @@ const firebaseConfig = {
             plats: plats
           };
         });
-      }).catch(function() { return []; });
+      }).catch(function () { return []; });
 
-    return Promise.all([pAnime, pSeries]).then(function(results) {
+    return Promise.all([pAnime, pSeries]).then(function (results) {
       var combined = [].concat(results[0], results[1]);
       if (!combined.length) {
         combined.push({
@@ -339,31 +364,33 @@ const firebaseConfig = {
     var input = $('#w-title');
     var dropdown = $('#autocomplete-list');
 
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function () {
       var val = this.value.trim();
       clearTimeout(searchTimer);
       if (val.length < 2) {
         dropdown.hidden = true;
         return;
       }
-      searchTimer = setTimeout(function() {
-        fetchAllMatches(val).then(function(items) {
+      searchTimer = setTimeout(function () {
+        fetchAllMatches(val).then(function (items) {
           dropdown.replaceChildren();
           if (!items.length) {
             dropdown.hidden = true;
             return;
           }
           dropdown.hidden = false;
-          items.forEach(function(it) {
+          items.forEach(function (it) {
             dropdown.append(h('button', {
               type: 'button', class: 'auto-item',
-              onclick: function() {
+              onclick: function () {
                 input.value = it.title;
                 $('#w-kind').value = it.kind;
                 $('#w-cover').value = it.img;
                 if (it.plats.length) {
                   $('#w-plat').value = it.plats[0];
                   setDetectedPlatforms(it.plats, it.title);
+                } else {
+                  setDetectedPlatforms([], it.title);
                 }
                 dropdown.hidden = true;
                 toast('¡Seleccionado con éxito!');
@@ -380,7 +407,7 @@ const firebaseConfig = {
       }, 350);
     });
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       if (!input.contains(e.target) && !dropdown.contains(e.target)) {
         dropdown.hidden = true;
       }
@@ -395,18 +422,18 @@ const firebaseConfig = {
     res.replaceChildren();
     st.textContent = 'Buscando coincidencias…';
 
-    fetchAllMatches(q).then(function(items) {
+    fetchAllMatches(q).then(function (items) {
       if (!items.length) {
         st.textContent = 'Sin coincidencias. Puedes elegir categoría y plataforma manualmente.';
         setDetectedPlatforms([], q);
         return;
       }
       st.textContent = 'Selecciona el resultado correcto:';
-      items.forEach(function(it) {
+      items.forEach(function (it) {
         var subtitle = (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '');
         res.append(h('button', {
           type: 'button', class: 'api-item',
-          onclick: function() {
+          onclick: function () {
             $('#w-title').value = it.title;
             $('#w-kind').value = it.kind;
             $('#w-cover').value = it.img;
@@ -418,7 +445,7 @@ const firebaseConfig = {
             toast('Detectado como ' + (KINDS[it.kind] || it.kind));
           }
         },
-          h('img', { src: it.img, alt: it.title }),
+          it.img ? h('img', { src: it.img, alt: it.title }) : null,
           h('span', { text: it.title }),
           h('span', { style: 'font-size:.7rem;color:var(--rose)', text: subtitle })
         ));
@@ -667,20 +694,20 @@ const firebaseConfig = {
       pBox.hidden = true;
     }
 
-    var ul = $('#letters-list');
+    var ul = $('#lt-list');
     ul.replaceChildren();
     if (!list.length) {
-      ul.append(emptyMsg('letters', 'No hay cartitas todavía. Escribe la primera arriba.'));
+      ul.append(h('p', { class: 'empty', text: S.loaded.letters ? 'No hay cartitas todavía. Escribe la primera arriba.' : 'Cargando…' }));
       return;
     }
     list.forEach(function (l) {
-      ul.append(h('div', { class: 'letter-card' + (l.pinned ? ' is-pinned' : '') },
-        h('div', { class: 'letter-header' },
+      ul.append(h('div', { class: 'letter' + (l.pinned ? ' pinned' : '') },
+        h('div', { class: 'letter-head' },
           h('span', { class: 'letter-from', text: 'De ' + nm(l.from || 'a') }),
           h('div', { style: 'display:flex;gap:6px;align-items:center' },
             h('span', { class: 'letter-date', text: fmtShort(new Date(l.createdAt || Date.now())) }),
             l.from === S.me ? h('button', {
-              type: 'button', class: 'icon-btn' + (l.pinned ? ' on' : ''),
+              type: 'button', class: 'icon-btn' + (l.pinned ? ' ok on' : ''),
               'aria-label': l.pinned ? 'Desfijar' : 'Fijar nota',
               onclick: function () {
                 var willPin = !l.pinned;
@@ -704,95 +731,119 @@ const firebaseConfig = {
   function renderCountdowns() {
     var ul = $('#cd-list');
     ul.replaceChildren();
-    var list = S.countdowns.slice().sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    var now = todayISO();
+    var list = S.countdowns.map(function (c) {
+      var target = c.date;
+      if (c.yearly && target) {
+        var curYear = new Date().getFullYear();
+        var md = target.slice(5);
+        target = curYear + '-' + md;
+        if (dayDiff(now, target) < 0) target = (curYear + 1) + '-' + md;
+      }
+      return Object.assign({}, c, { nextDate: target, diff: dayDiff(now, target) });
+    }).sort(function (a, b) { return (a.nextDate || '').localeCompare(b.nextDate || ''); });
+
     if (!list.length) {
-      ul.append(emptyMsg('countdowns', 'No hay cuentas regresivas. Agrega una fecha especial arriba.'));
+      ul.append(h('p', { class: 'empty', text: S.loaded.countdowns ? 'No hay cuentas regresivas. Agrega una fecha especial arriba.' : 'Cargando…' }));
       return;
     }
-    var now = todayISO();
     list.forEach(function (c) {
-      var diff = dayDiff(now, c.date);
-      var badgeText = diff > 0 ? 'Faltan ' + diff + ' ' + pl(diff, 'día', 'días') : diff === 0 ? '¡Es hoy!' : 'Pasó hace ' + Math.abs(diff) + ' ' + pl(Math.abs(diff), 'día', 'días');
-      ul.append(h('li', { class: 'cd-card' },
-        h('div', {},
-          h('h3', { class: 'cd-title', text: c.title }),
-          h('p', { class: 'cd-date', text: fmtFull(parse(c.date)) })
-        ),
-        h('div', { style: 'display:flex;gap:12px;align-items:center' },
-          h('span', { class: 'cd-badge' + (diff === 0 ? ' today' : diff < 0 ? ' past' : '') }, badgeText),
-          delBtn('countdowns', c.id)
-        )
+      var abs = Math.abs(c.diff);
+      var kText = c.diff > 0 ? 'Faltan' : c.diff === 0 ? '¡Es hoy!' : 'Pasó hace';
+      ul.append(h('div', { class: 'cd' },
+        delBtn('countdowns', c.id),
+        h('span', { class: 'cd-k', text: kText }),
+        h('span', { class: 'cd-n', text: c.diff === 0 ? '0' : abs }),
+        h('span', { class: 'cd-u', text: pl(abs, 'día', 'días') }),
+        h('h3', { class: 'cd-t', text: c.title }),
+        h('p', { class: 'cd-d', text: fmtFull(parse(c.nextDate)) + (c.yearly ? ' · Anual' : '') })
       ));
     });
   }
 
   function renderPolls() {
-    var ul = $('#poll-list');
+    var ul = $('#v-list');
     ul.replaceChildren();
     if (!S.polls.length) {
-      ul.append(emptyMsg('polls', 'No hay votaciones activas. Crea una encuesta arriba.'));
+      ul.append(h('p', { class: 'empty', text: S.loaded.polls ? 'No hay votaciones activas. Crea una arriba.' : 'Cargando…' }));
       return;
     }
     S.polls.forEach(function (p) {
-      var votesA = p.votesA || [];
-      var votesB = p.votesB || [];
-      var votedA = votesA.includes(S.me);
-      var votedB = votesB.includes(S.me);
+      var votes = p.votes || {};
+      var myVote = votes[S.me] || null;
+      var otherKey = S.me === 'a' ? 'b' : 'a';
+      var otherVote = votes[otherKey] || null;
+      var bothVoted = Boolean(myVote && otherVote);
 
-      ul.append(h('div', { class: 'poll-card' },
-        h('h3', { class: 'poll-q', text: p.question }),
-        h('div', { class: 'poll-opts' },
+      var countA = (votes.a === 'a' ? 1 : 0) + (votes.b === 'a' ? 1 : 0);
+      var countB = (votes.a === 'b' ? 1 : 0) + (votes.b === 'b' ? 1 : 0);
+
+      var voteFn = function (opt) {
+        var nextVotes = Object.assign({}, votes);
+        if (nextVotes[S.me] === opt) delete nextVotes[S.me];
+        else nextVotes[S.me] = opt;
+        run(function () { return upd('polls', p.id, { votes: nextVotes }); });
+      };
+
+      var statusText = bothVoted
+        ? (countA === countB ? '¡Empate! Toca decidir juntos.' : 'Ganó: ' + (countA > countB ? p.a : p.b))
+        : (myVote ? 'Esperando el voto de ' + nm(otherKey) + '…' : 'Toca tu opción favorita.');
+
+      ul.append(h('div', { class: 'poll' },
+        h('div', { class: 'poll-head' },
+          h('h3', { class: 'poll-q', text: p.q }),
+          delBtn('polls', p.id)
+        ),
+        h('div', { class: 'opts' },
           h('button', {
-            type: 'button', class: 'poll-opt' + (votedA ? ' selected' : ''),
-            onclick: function () {
-              var nA = votedA ? votesA.filter(function (x) { return x !== S.me; }) : votesA.concat([S.me]);
-              var nB = votesB.filter(function (x) { return x !== S.me; });
-              run(function () { return upd('polls', p.id, { votesA: nA, votesB: nB }); });
-            }
+            type: 'button',
+            class: 'opt' + (myVote === 'a' ? ' mine' : '') + (bothVoted && countA > countB ? ' win' : ''),
+            onclick: function () { voteFn('a'); }
           },
-            h('span', { text: p.optA }),
-            h('span', { class: 'poll-count', text: votesA.length + ' ' + pl(votesA.length, 'voto', 'votos') })
+            h('strong', { text: p.a }),
+            bothVoted ? h('span', { class: 'opt-n', text: countA + ' ' + pl(countA, 'voto', 'votos') }) : null
           ),
           h('button', {
-            type: 'button', class: 'poll-opt' + (votedB ? ' selected' : ''),
-            onclick: function () {
-              var nB = votedB ? votesB.filter(function (x) { return x !== S.me; }) : votesB.concat([S.me]);
-              var nA = votesA.filter(function (x) { return x !== S.me; });
-              run(function () { return upd('polls', p.id, { votesA: nA, votesB: nB }); });
-            }
+            type: 'button',
+            class: 'opt' + (myVote === 'b' ? ' mine' : '') + (bothVoted && countB > countA ? ' win' : ''),
+            onclick: function () { voteFn('b'); }
           },
-            h('span', { text: p.optB }),
-            h('span', { class: 'poll-count', text: votesB.length + ' ' + pl(votesB.length, 'voto', 'votos') })
+            h('strong', { text: p.b }),
+            bothVoted ? h('span', { class: 'opt-n', text: countB + ' ' + pl(countB, 'voto', 'votos') }) : null
           )
         ),
-        h('div', { style: 'display:flex;justify-content:flex-end;margin-top:8px' }, delBtn('polls', p.id))
+        h('p', { class: 'poll-s', text: statusText })
       ));
     });
   }
 
   function renderMemories() {
-    var grid = $('#mem-grid');
+    var grid = $('#m-list');
     grid.replaceChildren();
-    var list = S.memories.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var list = S.memories.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0); });
     if (!list.length) {
-      grid.append(h('p', { class: 'empty', text: S.loaded.memories ? 'Aún no hay recuerdos guardados. Sube la primera foto arriba.' : 'Cargando recuerdos…' }));
+      grid.append(h('p', { class: 'empty', text: S.loaded.memories ? 'Aún no hay recuerdos guardados. Agrega el primero arriba.' : 'Cargando…' }));
       return;
     }
     list.forEach(function (m) {
       grid.append(h('div', { class: 'mem-card' },
-        m.image ? h('img', { src: m.image, alt: m.caption || 'Recuerdo' }) : h('div', { class: 'mem-noimg', text: 'Sin foto' }),
+        m.photo ? h('img', { class: 'mem-img', src: m.photo, alt: m.title }) : null,
         h('div', { class: 'mem-body' },
-          m.caption ? h('p', { class: 'mem-cap', text: m.caption }) : null,
-          h('div', { class: 'mem-foot' },
-            h('span', { class: 'mem-date', text: fmtShort(new Date(m.createdAt || Date.now())) }),
+          h('div', { class: 'mem-top' },
+            h('div', {},
+              m.date ? h('time', { text: fmtFull(parse(m.date)) }) : null,
+              h('h3', { class: 'mem-t', text: m.title })
+            ),
             delBtn('memories', m.id)
-          )
+          ),
+          m.note ? h('p', { class: 'mem-n', text: m.note }) : null
         )
       ));
     });
   }
 
   function renderAll() {
+    renderRibbon();
     renderHoy();
     renderWatch();
     renderPlans();
@@ -804,59 +855,89 @@ const firebaseConfig = {
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    $('#w-day').value = todayISO();
+    $('#today').textContent = fmtLong(new Date());
+    $('#ic-pencil').append(icon('pencil'));
+    $$('[data-ic]').forEach(function (el) {
+      el.append(icon(el.dataset.ic));
+    });
+
     $('#p-date').value = todayISO();
+    $('#m-date').value = todayISO();
     $('#cd-date').value = todayISO();
+
     buildCats();
     buildIdeas();
+    buildWho();
     setupAutocomplete();
 
-    $$('.tab-btn').forEach(function (btn) {
+    $('#btn-names').addEventListener('click', function () {
+      var box = $('#names');
+      var open = box.hidden;
+      box.hidden = !open;
+      this.setAttribute('aria-expanded', String(open));
+      if (open) {
+        $('#name-a').value = S.settings.nameA;
+        $('#name-b').value = S.settings.nameB;
+        $('#who-am-i').value = S.me;
+      }
+    });
+
+    $('#f-names').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var na = $('#name-a').value.trim() || 'Gary';
+      var nb = $('#name-b').value.trim() || 'Yumi';
+      var me = $('#who-am-i').value;
+      S.me = me;
+      try { localStorage.setItem('nd-me', me); } catch (err) {}
+      run(function () {
+        return setDoc(doc(db, 'settings', 'config'), { nameA: na, nameB: nb }, { merge: true });
+      }).then(function (ok) {
+        if (ok) {
+          $('#names').hidden = true;
+          $('#btn-names').setAttribute('aria-expanded', 'false');
+          toast('¡Nombres guardados!');
+        }
+      });
+    });
+
+    $$('.tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var t = this.dataset.tab;
         S.tab = t;
-        $$('.tab-btn').forEach(function (b) {
-          var on = b.dataset.tab === t;
-          b.classList.toggle('on', on);
-          b.setAttribute('aria-selected', String(on));
+        $$('.tab').forEach(function (b) {
+          b.setAttribute('aria-selected', String(b.dataset.tab === t));
         });
-        $$('.tab-pane').forEach(function (p) {
+        $$('.panel').forEach(function (p) {
           p.hidden = p.id !== 'tab-' + t;
         });
       });
     });
 
-    $$('.sub-tab').forEach(function (btn) {
+    $$('.subtabs .chip').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var s = this.dataset.sub;
         S.sub = s;
-        $$('.sub-tab').forEach(function (b) {
-          var on = b.dataset.sub === s;
-          b.classList.toggle('on', on);
-          b.setAttribute('aria-selected', String(on));
+        $$('.subtabs .chip').forEach(function (b) {
+          b.classList.toggle('on', b.dataset.sub === s);
         });
-        $$('.sub-pane').forEach(function (p) {
-          p.hidden = p.id !== 'sub-' + s;
+        ['cartas', 'recuerdos', 'cuenta', 'votos'].forEach(function (k) {
+          $('#sub-' + k).hidden = k !== s;
         });
       });
     });
 
-    $('#who-am-i').addEventListener('change', function () {
-      S.me = this.value;
-      try { localStorage.setItem('nd-me', S.me); } catch (e) {}
-      renderAll();
-      toast('Ahora eres ' + nm(S.me));
-    });
+    $('#day-prev').addEventListener('click', function () { S.day = addDays(S.day, -1); renderHoy(); });
+    $('#day-next').addEventListener('click', function () { S.day = addDays(S.day, 1); renderHoy(); });
+    $('#day-today').addEventListener('click', function () { S.day = todayISO(); renderHoy(); });
 
-    $('#ev-form').addEventListener('submit', function (e) {
+    $('#f-ev').addEventListener('submit', function (e) {
       e.preventDefault();
       var title = $('#ev-title').value.trim();
-      var date = $('#ev-date').value || S.day;
       var time = $('#ev-time').value;
       var note = $('#ev-note').value.trim();
       if (!title) return;
       run(function () {
-        return add('events', { title: title, date: date, time: time, cat: S.evCat, note: note, done: false });
+        return add('events', { title: title, date: S.day, time: time, cat: S.evCat, note: note, done: false });
       }).then(function (ok) {
         if (ok) {
           $('#ev-title').value = '';
@@ -866,10 +947,11 @@ const firebaseConfig = {
       });
     });
 
-    $('#w-form').addEventListener('submit', function (e) {
+    $('#f-watch').addEventListener('submit', function (e) {
       e.preventDefault();
       var title = $('#w-title').value.trim();
-      var kind = $('#w-kind').value;
+      var kindVal = $('#w-kind').value;
+      var kind = kindVal === 'auto' ? 'serie' : kindVal;
       var cover = $('#w-cover').value.trim();
       var platform = $('#w-plat').value.trim();
       if (!title) return;
@@ -892,7 +974,8 @@ const firebaseConfig = {
     });
 
     $('#api-close').addEventListener('click', function () { $('#api-box').hidden = true; });
-    $('#w-search-api').addEventListener('click', searchCoverAPI);
+    $('#btn-search-api').addEventListener('click', searchCoverAPI);
+    $('#btn-pick').addEventListener('click', pickRandom);
 
     $('#pick-go').addEventListener('click', function () {
       if (!S.pickId) return;
@@ -904,9 +987,8 @@ const firebaseConfig = {
       });
     });
     $('#pick-again').addEventListener('click', pickRandom);
-    $('#pick-close').addEventListener('click', function () { $('#pick').hidden = true; });
 
-    $('#p-form').addEventListener('submit', function (e) {
+    $('#f-plan').addEventListener('submit', function (e) {
       e.preventDefault();
       var title = $('#p-title').value.trim();
       var place = $('#p-place').value.trim();
@@ -923,7 +1005,7 @@ const firebaseConfig = {
       });
     });
 
-    $('#td-form').addEventListener('submit', function (e) {
+    $('#f-todo').addEventListener('submit', function (e) {
       e.preventDefault();
       var title = $('#td-title').value.trim();
       var who = $('#td-who').value;
@@ -938,27 +1020,49 @@ const firebaseConfig = {
       });
     });
 
-    $('#letter-form').addEventListener('submit', function (e) {
+    $('#lt-pin').addEventListener('click', function () {
+      S.pinLetter = !S.pinLetter;
+      this.setAttribute('aria-pressed', String(S.pinLetter));
+      this.classList.toggle('on', S.pinLetter);
+    });
+    $('#lt-pin').classList.add('on');
+
+    $('#f-letter').addEventListener('submit', function (e) {
       e.preventDefault();
-      var body = $('#letter-body').value.trim();
+      var body = $('#lt-body').value.trim();
       if (!body) return;
-      run(function () {
-        return add('letters', { body: body, from: S.me, pinned: false });
+      var willPin = S.pinLetter;
+      var p = Promise.resolve();
+      if (willPin) {
+        S.letters.forEach(function (x) {
+          if (x.pinned) p = p.then(function () { return upd('letters', x.id, { pinned: false }); });
+        });
+      }
+      p.then(function () {
+        return run(function () {
+          return add('letters', { body: body, from: S.me, pinned: willPin });
+        });
       }).then(function (ok) {
         if (ok) {
-          $('#letter-body').value = '';
+          $('#lt-body').value = '';
           toast('¡Cartita enviada!');
         }
       });
     });
 
-    $('#cd-form').addEventListener('submit', function (e) {
+    $('#cd-yearly').addEventListener('click', function () {
+      S.yearly = !S.yearly;
+      this.setAttribute('aria-pressed', String(S.yearly));
+      this.classList.toggle('on', S.yearly);
+    });
+
+    $('#f-cd').addEventListener('submit', function (e) {
       e.preventDefault();
       var title = $('#cd-title').value.trim();
       var date = $('#cd-date').value;
       if (!title || !date) return;
       run(function () {
-        return add('countdowns', { title: title, date: date });
+        return add('countdowns', { title: title, date: date, yearly: S.yearly });
       }).then(function (ok) {
         if (ok) {
           $('#cd-title').value = '';
@@ -967,38 +1071,44 @@ const firebaseConfig = {
       });
     });
 
-    $('#poll-form').addEventListener('submit', function (e) {
+    $('#f-poll').addEventListener('submit', function (e) {
       e.preventDefault();
-      var q = $('#poll-q').value.trim();
-      var optA = $('#poll-optA').value.trim();
-      var optB = $('#poll-optB').value.trim();
-      if (!q || !optA || !optB) return;
+      var q = $('#v-q').value.trim();
+      var a = $('#v-a').value.trim();
+      var b = $('#v-b').value.trim();
+      if (!q || !a || !b) return;
       run(function () {
-        return add('polls', { question: q, optA: optA, optB: optB, votesA: [], votesB: [] });
+        return add('polls', { q: q, a: a, b: b, votes: {} });
       }).then(function (ok) {
         if (ok) {
-          $('#poll-q').value = '';
-          $('#poll-optA').value = '';
-          $('#poll-optB').value = '';
-          toast('¡Encuesta creada!');
+          $('#v-q').value = '';
+          $('#v-a').value = '';
+          $('#v-b').value = '';
+          toast('¡Votación creada!');
         }
       });
     });
 
-    $('#mem-file').addEventListener('change', function () {
-      var file = this.files && this.files[0];
-      if (!file) return;
+    $('#f-mem').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var title = $('#m-title').value.trim();
+      var date = $('#m-date').value;
+      var note = $('#m-note').value.trim();
+      var fileInput = $('#m-photo');
+      var file = fileInput.files && fileInput.files[0];
+      if (!title) return;
+
       compressImage(file).then(function (dataUrl) {
-        var cap = $('#mem-cap').value.trim();
-        run(function () {
-          return add('memories', { image: dataUrl, caption: cap });
-        }).then(function (ok) {
-          if (ok) {
-            $('#mem-file').value = '';
-            $('#mem-cap').value = '';
-            toast('¡Recuerdo guardado con éxito!');
-          }
+        return run(function () {
+          return add('memories', { title: title, date: date, note: note, photo: dataUrl });
         });
+      }).then(function (ok) {
+        if (ok) {
+          $('#m-title').value = '';
+          $('#m-note').value = '';
+          fileInput.value = '';
+          toast('¡Recuerdo guardado!');
+        }
       }).catch(function () {
         toast('No se pudo procesar la imagen.');
       });
@@ -1009,26 +1119,34 @@ const firebaseConfig = {
       auth = getAuth(app);
       db = getFirestore(app);
 
+      $('#btn-google').addEventListener('click', function () {
+        signInWithPopup(auth, new GoogleAuthProvider()).catch(function (e) {
+          $('#lg-msg').textContent = e.message || 'No se pudo iniciar sesión.';
+        });
+      });
+
+      $('#btn-out').addEventListener('click', function () {
+        signOut(auth);
+      });
+
       onAuthStateChanged(auth, function (user) {
-        var btn = $('#auth-btn');
         if (user) {
           S.uid = user.uid;
-          btn.textContent = 'Salir (' + (user.displayName || user.email || 'Conectado') + ')';
-          btn.onclick = function () { signOut(auth); };
+          $('#login').hidden = true;
+          $('#shell').hidden = false;
+          $('#btn-names').hidden = false;
           loadData();
         } else {
           S.uid = null;
-          btn.textContent = 'Iniciar sesión con Google';
-          btn.onclick = function () {
-            signInWithPopup(auth, new GoogleAuthProvider()).catch(function (e) {
-              toast('No se pudo iniciar sesión.');
-            });
-          };
-          loadData();
+          $('#login').hidden = false;
+          $('#shell').hidden = true;
+          $('#btn-names').hidden = true;
+          unsubs.forEach(function (fn) { fn(); });
+          unsubs = [];
         }
       });
     } catch (e) {
-      toast('Error al inicializar Firebase.');
+      $('#offline').hidden = false;
     }
   });
 

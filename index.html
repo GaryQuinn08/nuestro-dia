@@ -1,301 +1,217 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nuestra Zona Geek</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#130f17">
+  <title>Nuestro Día</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <header class="header">
-      <div>
-        <h1>Nuestra Zona Geek</h1>
-        <p>Catálogo y seguimiento compartido</p>
-      </div>
-      <div class="header-right">
-        <select id="who-am-i" aria-label="Quién eres">
-          <option value="a">Gary</option>
-          <option value="b">Yumi</option>
-        </select>
-        <button id="auth-btn" class="btn ghost sm" type="button">Iniciar sesión</button>
-      </div>
-    </header>
 
-    <!-- Pestañas de navegación -->
-    <nav class="tabs" role="tablist">
-      <button type="button" role="tab" class="tab-btn on" data-tab="hoy" aria-selected="true">Hoy</button>
-      <button type="button" role="tab" class="tab-btn" data-tab="watch" aria-selected="false">Catálogo</button>
-      <button type="button" role="tab" class="tab-btn" data-tab="plans" aria-selected="false">Planes</button>
-      <button type="button" role="tab" class="tab-btn" data-tab="todos" aria-selected="false">Pendientes</button>
-      <button type="button" role="tab" class="tab-btn" data-tab="extras" aria-selected="false">Extras</button>
-    </nav>
-
-    <main>
-      <!-- TAB: HOY / CALENDARIO -->
-      <section id="tab-hoy" class="tab-pane">
-        <div class="card">
-          <h2>Añadir actividad</h2>
-          <form id="ev-form" class="form-grid">
-            <div class="input-wrapper">
-              <label class="cap" for="ev-title">Título</label>
-              <input id="ev-title" type="text" required maxlength="80" placeholder="Ej. Maratón de anime, cenar juntos...">
-            </div>
-            <div class="input-wrapper">
-              <label class="cap" for="ev-date">Fecha</label>
-              <input id="ev-date" type="date">
-            </div>
-            <div class="input-wrapper">
-              <label class="cap" for="ev-time">Hora (opcional)</label>
-              <input id="ev-time" type="time">
-            </div>
-            <div class="input-wrapper" style="grid-column: 1 / -1;">
-              <label class="cap">Categoría</label>
-              <div id="ev-cats" class="chips-container" role="radiogroup"></div>
-            </div>
-            <div class="input-wrapper" style="grid-column: 1 / -1;">
-              <label class="cap" for="ev-note">Nota (opcional)</label>
-              <input id="ev-note" type="text" maxlength="120" placeholder="Detalles o link de stream...">
-            </div>
-            <button type="submit" class="btn-primary" style="grid-column: 1 / -1;">Guardar Actividad</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="day-nav">
-            <h2 id="day-label">Hoy</h2>
-          </div>
-          <div id="week" class="week-strip"></div>
-          <div id="prog" class="progress-box" hidden>
-            <span id="prog-t">0 de 0 hechas</span>
-            <div class="progress-bar"><div id="prog-b" class="progress-fill"></div></div>
-          </div>
-          <ul id="ev-list" class="list"></ul>
-        </div>
-      </section>
-
-      <!-- TAB: CATÁLOGO (WATCH) -->
-      <section id="tab-watch" class="tab-pane" hidden>
-        <div class="card">
-          <h2>Añadir al Catálogo</h2>
-          <form id="w-form">
-            <div class="input-wrapper">
-              <label class="cap" for="w-title">Título (escribe para autocompletar)</label>
-              <input id="w-title" type="text" required maxlength="80" placeholder="Ej. Chainsaw Man, D.Gray-man…">
-              <div id="autocomplete-list" class="autocomplete-dropdown" hidden></div>
-            </div>
-
-            <div class="input-row">
-              <div class="input-wrapper">
-                <label class="cap" for="w-kind">Tipo</label>
-                <select id="w-kind">
-                  <option value="anime">Anime</option>
-                  <option value="serie">Serie</option>
-                  <option value="pelicula">Película</option>
-                  <option value="juego">Videojuego</option>
-                </select>
-              </div>
-              <div class="input-wrapper">
-                <input id="w-cover" type="hidden">
-                <button type="button" id="w-search-api" class="btn ghost" style="margin-top:18px;">Buscar portada/info 🔍</button>
-              </div>
-            </div>
-
-            <div id="api-box" class="api-modal-box" hidden>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <span id="api-status" class="cap">Selecciona un resultado:</span>
-                <button type="button" id="api-close" class="icon-btn" style="height:24px;width:24px;">✕</button>
-              </div>
-              <div id="api-results" class="api-results"></div>
-            </div>
-
-            <div id="detected-plats-box" hidden style="margin-top:8px;">
-              <span class="cap">Plataformas sugeridas (haz clic para elegir o abrir web en español):</span>
-              <div id="detected-plats" class="chips-container"></div>
-            </div>
-
-            <div class="input-wrapper" style="margin-top:10px;">
-              <label class="cap" for="w-plat">Plataforma</label>
-              <input id="w-plat" type="text" placeholder="Ej. Crunchyroll, JKanime, Netflix...">
-            </div>
-
-            <button type="submit" class="btn-primary" style="margin-top:12px;">Guardar en el Catálogo</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <h2>Catálogo Compartido</h2>
-            <button type="button" class="btn sm" onclick="pickRandom()">🎲 Sortear qué ver</button>
-          </div>
-          <div id="w-kind-filters" class="chips-container" style="margin-top:10px;"></div>
-          <div id="w-filters" class="chips-container" style="margin-top:6px;"></div>
-          <ul id="w-list" class="list" style="margin-top:12px;"></ul>
-        </div>
-      </section>
-
-      <!-- TAB: PLANES -->
-      <section id="tab-plans" class="tab-pane" hidden>
-        <div class="card">
-          <h2>Proponer un Plan</h2>
-          <form id="p-form">
-            <div class="input-wrapper">
-              <label class="cap" for="p-title">Idea de cita / plan</label>
-              <input id="p-title" type="text" required maxlength="100" placeholder="Ej. Ir por café y postre...">
-            </div>
-            <div class="input-row">
-              <div class="input-wrapper">
-                <label class="cap" for="p-place">Lugar (opcional)</label>
-                <input id="p-place" type="text" maxlength="60" placeholder="Ej. Cafetería del centro">
-              </div>
-              <div class="input-wrapper">
-                <label class="cap" for="p-date">Fecha (opcional)</label>
-                <input id="p-date" type="date">
-              </div>
-            </div>
-            <div class="input-wrapper">
-              <label class="cap">Ideas rápidas:</label>
-              <div id="p-ideas" class="chips-container"></div>
-            </div>
-            <button type="submit" class="btn-primary" style="margin-top:10px;">Guardar Plan</button>
-          </form>
-        </div>
-        <div class="card">
-          <h2>Planes e Ideas</h2>
-          <ul id="p-list" class="list"></ul>
-        </div>
-      </section>
-
-      <!-- TAB: PENDIENTES -->
-      <section id="tab-todos" class="tab-pane" hidden>
-        <div class="card">
-          <h2>Nuevo Pendiente</h2>
-          <form id="td-form" class="input-row">
-            <div class="input-wrapper" style="flex:2;">
-              <input id="td-title" type="text" required maxlength="100" placeholder="Ej. Comprar ingredientes para la cena...">
-            </div>
-            <div class="input-wrapper" style="flex:1;">
-              <select id="td-who">
-                <option value="both">Ambos</option>
-              </select>
-            </div>
-            <button type="submit" class="btn-primary">Añadir</button>
-          </form>
-        </div>
-        <div class="card">
-          <h2>Lista de Tareas Compartidas</h2>
-          <div id="td-filters" class="chips-container" style="margin-bottom:10px;"></div>
-          <ul id="td-list" class="list"></ul>
-        </div>
-      </section>
-
-      <!-- TAB: EXTRAS (CARTAS, RECUERDOS, ETC) -->
-      <section id="tab-extras" class="tab-pane" hidden>
-        <div class="sub-tabs" role="tablist">
-          <button type="button" role="tab" class="sub-tab on" data-sub="cartas" aria-selected="true">Cartitas</button>
-          <button type="button" role="tab" class="sub-tab" data-sub="recuerdos" aria-selected="false">Recuerdos</button>
-          <button type="button" role="tab" class="sub-tab" data-sub="cuentas" aria-selected="false">Cuentas</button>
-          <button type="button" role="tab" class="sub-tab" data-sub="encuestas" aria-selected="false">Encuestas</button>
-        </div>
-
-        <!-- Subtab: Cartas -->
-        <div id="sub-cartas" class="sub-pane">
-          <div class="card">
-            <h2>Escribir Cartita</h2>
-            <form id="letter-form">
-              <div class="input-wrapper">
-                <textarea id="letter-body" rows="3" required maxlength="500" placeholder="Escribe algo lindo para tu pareja..."></textarea>
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:8px;">Enviar Cartita 💌</button>
-            </form>
-          </div>
-          <div id="pinned-box" hidden></div>
-          <div class="card">
-            <h2>Buzón de Cartitas</h2>
-            <div id="letters-list" class="letters-grid"></div>
-          </div>
-        </div>
-
-        <!-- Subtab: Recuerdos -->
-        <div id="sub-recuerdos" class="sub-pane" hidden>
-          <div class="card">
-            <h2>Subir Recuerdo (Foto)</h2>
-            <form id="mem-form" class="input-row">
-              <input id="mem-file" type="file" accept="image/*" style="display:none">
-              <button type="button" class="btn" onclick="$('#mem-file').click()">📷 Seleccionar Foto</button>
-              <input id="mem-cap" type="text" maxlength="80" placeholder="Descripción breve..." style="flex:2;">
-            </form>
-          </div>
-          <div class="card">
-            <h2>Galería de Recuerdos</h2>
-            <div id="mem-grid" class="memories-grid"></div>
-          </div>
-        </div>
-
-        <!-- Subtab: Cuentas Regresivas -->
-        <div id="sub-cuentas" class="sub-pane" hidden>
-          <div class="card">
-            <h2>Nueva Fecha Especial</h2>
-            <form id="cd-form" class="input-row">
-              <div class="input-wrapper" style="flex:2;">
-                <input id="cd-title" type="text" required maxlength="60" placeholder="Ej. Aniversario, Próximo viaje...">
-              </div>
-              <div class="input-wrapper" style="flex:1;">
-                <input id="cd-date" type="date">
-              </div>
-              <button type="submit" class="btn-primary">Crear</button>
-            </form>
-          </div>
-          <div class="card">
-            <h2>Cuentas Regresivas</h2>
-            <ul id="cd-list" class="list"></ul>
-          </div>
-        </div>
-
-        <!-- Subtab: Encuestas -->
-        <div id="sub-encuestas" class="sub-pane" hidden>
-          <div class="card">
-            <h2>Crear Votación / Encuesta</h2>
-            <form id="poll-form">
-              <div class="input-wrapper">
-                <input id="poll-q" type="text" required maxlength="100" placeholder="Pregunta (Ej. ¿Qué cenamos hoy?)">
-              </div>
-              <div class="input-row" style="margin-top:8px;">
-                <input id="poll-optA" type="text" required maxlength="50" placeholder="Opción A">
-                <input id="poll-optB" type="text" required maxlength="50" placeholder="Opción B">
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:10px;">Lanzar Encuesta</button>
-            </form>
-          </div>
-          <div class="card">
-            <h2>Encuestas Activas</h2>
-            <div id="poll-list"></div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Modal para sortear título -->
-  <div id="pick" class="modal" hidden>
-    <div class="modal-content card">
-      <h2>🎲 ¡Título sorteado!</h2>
-      <div class="pick-result">
-        <h3 id="pick-t" style="font-size:1.2rem;color:var(--rose)"></h3>
-        <p id="pick-m" class="muted"></p>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button type="button" id="pick-go" class="btn-primary" style="flex:1;">Marcar como En curso</button>
-        <button type="button" id="pick-again" class="btn ghost" style="flex:1;">Sortear otro</button>
-        <button type="button" id="pick-close" class="icon-btn">✕</button>
-      </div>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Nuestro Día</h1>
+      <p class="today" id="today"></p>
     </div>
+    <button type="button" class="icon-btn" id="btn-names" aria-label="Cambiar los nombres" aria-expanded="false" hidden><span id="ic-pencil"></span></button>
+  </header>
+  <div class="ribbon" id="ribbon" hidden></div>
+  <div id="pinned-box" hidden></div>
+  <div class="note" id="offline" hidden>Falta pegar la configuración de Firebase en el archivo.</div>
+  <section class="login" id="login" hidden>
+    <h2>Entrar</h2>
+    <button class="btn" type="button" id="btn-google" style="margin-top:12px">Entrar con Google</button>
+    <p class="msg" id="lg-msg" role="alert"></p>
+  </section>
+
+  <div id="shell" hidden>
+
+  <section class="names" id="names" hidden>
+    <p>Configura sus nombres y selecciona quién eres en este dispositivo para tus reseñas y cartitas.</p>
+    <form class="form" id="f-names" autocomplete="off">
+      <div class="f"><label class="cap" for="name-a">Persona 1</label><input id="name-a" type="text" maxlength="24"></div>
+      <div class="f"><label class="cap" for="name-b">Persona 2</label><input id="name-b" type="text" maxlength="24"></div>
+      <div class="f"><label class="cap" for="who-am-i">En este celular soy</label>
+        <select id="who-am-i"><option value="a">Persona 1</option><option value="b">Persona 2</option></select>
+      </div>
+      <button class="btn" type="submit" style="align-self:flex-end">Guardar</button>
+      <button class="btn ghost" type="button" id="btn-out" style="align-self:flex-end">Salir de la cuenta</button>
+    </form>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" role="tab" data-tab="hoy" aria-selected="true" type="button"><span data-ic="calendar"></span>Hoy</button>
+    <button class="tab" role="tab" data-tab="ver" aria-selected="false" type="button"><span data-ic="tv"></span>Catálogo</button>
+    <button class="tab" role="tab" data-tab="planes" aria-selected="false" type="button"><span data-ic="pin"></span>Planes</button>
+    <button class="tab" role="tab" data-tab="pendientes" aria-selected="false" type="button"><span data-ic="list"></span>Pendientes</button>
+    <button class="tab" role="tab" data-tab="nosotros" aria-selected="false" type="button"><span data-ic="heart"></span>Nosotros</button>
+  </nav>
+
+  <main>
+    <!-- HOY -->
+    <section class="panel" id="tab-hoy">
+      <div class="daynav">
+        <button type="button" class="icon-btn" id="day-prev" aria-label="Día anterior"><span data-ic="left"></span></button>
+        <h2 class="lbl" id="day-label"></h2>
+        <button type="button" class="icon-btn" id="day-next" aria-label="Día siguiente"><span data-ic="right"></span></button>
+        <button type="button" class="icon-btn" id="day-today">Hoy</button>
+      </div>
+      <div class="week" id="week"></div>
+      <form class="form" id="f-ev" autocomplete="off">
+        <div class="f-sm"><label class="cap" for="ev-time">Hora</label><input id="ev-time" type="time"></div>
+        <div class="f"><label class="cap" for="ev-title">Actividad</label><input id="ev-title" type="text" required maxlength="80" placeholder="Desayuno largo, caminata, serie…"></div>
+        <div class="f-wide"><label class="cap" for="ev-note">Nota</label><input id="ev-note" type="text" maxlength="140" placeholder="Opcional"></div>
+        <div class="f-wide chips" id="ev-cats" role="radiogroup" aria-label="Categoría"></div>
+        <button class="btn" type="submit">Agregar al día</button>
+      </form>
+      <div class="prog" id="prog" hidden><span id="prog-t"></span><div class="bar"><i id="prog-b"></i></div></div>
+      <ul class="list" id="ev-list"></ul>
+    </section>
+
+    <!-- CATÁLOGO METACRITIC -->
+    <section class="panel" id="tab-ver" hidden>
+      <h2>Nuestro Catálogo</h2>
+      <p class="lead">Series, animes, películas y juegos con puntuación individual y promedio de pareja.</p>
+      <form class="form" id="f-watch" autocomplete="off">
+        <div class="f input-wrapper">
+          <label class="cap" for="w-title">Título (escribe para autocompletar)</label>
+          <input id="w-title" type="text" required maxlength="80" placeholder="Ej. D.Gray-man, Chainsaw Man…">
+          <div id="autocomplete-list" class="autocomplete-dropdown" hidden></div>
+        </div>
+        <div class="f-sm"><label class="cap" for="w-kind">Categoría (auto)</label>
+          <select id="w-kind">
+            <option value="auto">Detectar auto</option>
+            <option value="serie">Serie</option>
+            <option value="anime">Anime</option>
+            <option value="pelicula">Película</option>
+            <option value="juego">Videojuego</option>
+          </select>
+        </div>
+        <div class="f-sm"><label class="cap" for="w-plat">Plataforma elegida</label><input id="w-plat" type="text" maxlength="40" list="plats" placeholder="Elige o escribe…">
+          <datalist id="plats"><option value="Netflix"><option value="Crunchyroll"><option value="Disney+"><option value="Prime Video"><option value="Max"><option value="Apple TV+"><option value="YouTube"><option value="Xbox"><option value="Switch"><option value="PC"><option value="JKanime"><option value="AnimeFLV"><option value="MonosChinos"></datalist>
+        </div>
+        <div class="f-wide" id="detected-plats-box" hidden>
+          <label class="cap">Disponible / Detectado en (toca para elegir o abrir web en español):</label>
+          <div class="chips" id="detected-plats"></div>
+        </div>
+        <div class="f-wide"><label class="cap" for="w-cover">Portada (URL opcional o usa Buscar Info)</label><input id="w-cover" type="url" maxlength="400" placeholder="https://…"></div>
+        <button class="btn" type="submit">Agregar al catálogo</button>
+        <button class="btn ghost" type="button" id="btn-search-api">Buscar coincidencias</button>
+      </form>
+      <div class="api-box" id="api-box" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="pick-k" id="api-status">Buscando…</span>
+          <button type="button" class="icon-btn" id="api-close">✕</button>
+        </div>
+        <div class="api-results" id="api-results"></div>
+      </div>
+
+      <div class="chips filters" id="w-kind-filters" role="group" aria-label="Filtrar por tipo"></div>
+      <div class="chips filters" id="w-filters" role="group" aria-label="Filtrar por estado"></div>
+      <div style="margin-top:14px"><button type="button" class="btn ghost" id="btn-pick">¿Qué vemos o jugamos hoy?</button></div>
+      <div class="pick" id="pick" hidden>
+        <p class="pick-k">Hoy toca</p>
+        <p class="pick-t" id="pick-t"></p>
+        <p class="pick-m" id="pick-m"></p>
+        <div class="chips">
+          <button type="button" class="btn" id="pick-go" hidden>Empezar</button>
+          <button type="button" class="btn ghost" id="pick-again" hidden>Sortear otra vez</button>
+        </div>
+      </div>
+      <ul class="list" id="w-list"></ul>
+    </section>
+
+    <!-- PLANES -->
+    <section class="panel" id="tab-planes" hidden>
+      <h2>Planes y citas</h2>
+      <p class="lead">Ideas para salir, lugares por conocer y lo que ya tienen agendado.</p>
+      <form class="form" id="f-plan" autocomplete="off">
+        <div class="f"><label class="cap" for="p-title">Plan</label><input id="p-title" type="text" required maxlength="80" placeholder="Qué quieren hacer"></div>
+        <div class="f"><label class="cap" for="p-place">Lugar</label><input id="p-place" type="text" maxlength="80" placeholder="Opcional"></div>
+        <div class="f-sm"><label class="cap" for="p-date">Fecha</label><input id="p-date" type="date"></div>
+        <button class="btn" type="submit">Agregar</button>
+      </form>
+      <div class="chips ideas" id="p-ideas" aria-label="Ideas rápidas"></div>
+      <ul class="list" id="p-list"></ul>
+    </section>
+
+    <!-- PENDIENTES -->
+    <section class="panel" id="tab-pendientes" hidden>
+      <h2>Pendientes</h2>
+      <p class="lead">Mandados, compras y cosas de la casa. Cada una con su responsable.</p>
+      <form class="form" id="f-todo" autocomplete="off">
+        <div class="f"><label class="cap" for="td-title">Tarea</label><input id="td-title" type="text" required maxlength="100" placeholder="Comprar, llamar, arreglar…"></div>
+        <div class="f-sm"><label class="cap" for="td-who">Le toca a</label><select id="td-who"></select></div>
+        <button class="btn" type="submit">Agregar</button>
+      </form>
+      <div class="chips filters" id="td-filters" role="group" aria-label="Filtrar por persona"></div>
+      <ul class="list" id="td-list"></ul>
+    </section>
+
+    <!-- NOSOTROS -->
+    <section class="panel" id="tab-nosotros" hidden>
+      <h2>Nosotros</h2>
+      <p class="lead">Cartitas, fotos, fechas especiales y decisiones que toman juntos.</p>
+      <div class="chips subtabs" role="tablist" aria-label="Apartados de Nosotros">
+        <button type="button" class="chip on" data-sub="cartas" role="tab">Cartitas</button>
+        <button type="button" class="chip" data-sub="recuerdos" role="tab">Recuerdos y Fotos</button>
+        <button type="button" class="chip" data-sub="cuenta" role="tab">Cuenta regresiva</button>
+        <button type="button" class="chip" data-sub="votos" role="tab">Votación rápida</button>
+      </div>
+
+      <!-- CARTITAS -->
+      <div id="sub-cartas">
+        <form class="form" id="f-letter" autocomplete="off">
+          <div class="f-wide"><label class="cap" for="lt-body">Escribe una nota o cartita</label><textarea id="lt-body" required maxlength="600" placeholder="Un mensaje bonito para que lo lea cuando entre…"></textarea></div>
+          <div class="f-wide chips"><button type="button" class="chip" id="lt-pin" aria-pressed="true">Fijar arriba de la pantalla principal</button></div>
+          <button class="btn" type="submit">Enviar cartita</button>
+        </form>
+        <div class="letter-list" id="lt-list"></div>
+      </div>
+
+      <!-- RECUERDOS Y FOTOS -->
+      <div id="sub-recuerdos" hidden>
+        <form class="form" id="f-mem" autocomplete="off">
+          <div class="f"><label class="cap" for="m-title">Momento</label><input id="m-title" type="text" required maxlength="80" placeholder="Nuestra salida al café"></div>
+          <div class="f-sm"><label class="cap" for="m-date">Fecha</label><input id="m-date" type="date" required></div>
+          <div class="f-wide"><label class="cap" for="m-photo">Foto (opcional, se comprime automático)</label><input id="m-photo" type="file" accept="image/*"></div>
+          <div class="f-wide"><label class="cap" for="m-note">Nota</label><textarea id="m-note" maxlength="600" placeholder="Qué pasó, qué sintieron, qué no quieren olvidar"></textarea></div>
+          <button class="btn" type="submit">Guardar recuerdo</button>
+        </form>
+        <div class="mem-grid" id="m-list"></div>
+      </div>
+
+      <!-- CUENTA REGRESIVA -->
+      <div id="sub-cuenta" hidden>
+        <form class="form" id="f-cd" autocomplete="off">
+          <div class="f"><label class="cap" for="cd-title">Qué esperan</label><input id="cd-title" type="text" required maxlength="60" placeholder="Aniversario, viaje, concierto…"></div>
+          <div class="f-sm"><label class="cap" for="cd-date">Fecha</label><input id="cd-date" type="date" required></div>
+          <div class="f-wide chips"><button type="button" class="chip" id="cd-yearly" aria-pressed="false">Se repite cada año</button></div>
+          <button class="btn" type="submit">Agregar</button>
+        </form>
+        <div class="cd-grid" id="cd-list"></div>
+      </div>
+
+      <!-- VOTACIÓN -->
+      <div id="sub-votos" hidden>
+        <form class="form" id="f-poll" autocomplete="off">
+          <div class="f-wide"><label class="cap" for="v-q">Pregunta</label><input id="v-q" type="text" required maxlength="80" placeholder="¿Qué cenamos hoy?"></div>
+          <div class="f"><label class="cap" for="v-a">Opción A</label><input id="v-a" type="text" required maxlength="40" placeholder="Pizza"></div>
+          <div class="f"><label class="cap" for="v-b">Opción B</label><input id="v-b" type="text" required maxlength="40" placeholder="Sushi"></div>
+          <button class="btn" type="submit">Crear votación</button>
+        </form>
+        <p class="lead">Cada quien vota por su cuenta. Los resultados se muestran cuando votan los dos.</p>
+        <div id="v-list"></div>
+      </div>
+    </section>
+  </main>
   </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- Toast para notificaciones -->
-  <div id="toast" class="toast" hidden></div>
-
-  <!-- Archivo principal de JavaScript -->
-  <script type="module" src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
