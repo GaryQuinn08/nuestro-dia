@@ -225,93 +225,151 @@ const firebaseConfig = {
     });
   }
 
-  function setDetectedPlatforms(plats, queryTitle) {
-    var box = $('#detected-plats-box'), list = $('#detected-plats');
-    list.replaceChildren();
-    
-    var unique = [];
-    (plats || []).forEach(function (p) { if (p && unique.indexOf(p) === -1) unique.push(p); });
-    
-    var defaultAnimeSites = ['JKanime', 'AnimeFLV', 'MonosChinos'];
-    defaultAnimeSites.forEach(function(site) {
-      if (unique.indexOf(site) === -1) unique.push(site);
-    });
+function setDetectedPlatforms(plats, queryTitle, kind) {
+  var box = $('#detected-plats-box');
+  var list = $('#detected-plats');
 
-    box.hidden = false;
-    unique.forEach(function (p) {
-      var isCustomWeb = ['JKanime', 'AnimeFLV', 'MonosChinos'].indexOf(p) !== -1;
-      var chipClass = 'chip' + ($('#w-plat').value === p ? ' on' : '');
-      
-      if (isCustomWeb && queryTitle) {
-        var searchUrl = p === 'JKanime' ? 'https://jkanime.net/es/buscar/?q=' + encodeURIComponent(queryTitle)
-                      : p === 'AnimeFLV' ? 'https://animeskak.com/browse?q=' + encodeURIComponent(queryTitle)
-                      : 'https://monoschinos.com/animes?q=' + encodeURIComponent(queryTitle);
-        
-        list.append(h('a', {
-          href: searchUrl,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-          class: chipClass,
-          style: 'text-decoration:none;',
-          text: p + ' ↗'
-        }));
-      } else {
-        list.append(h('button', {
-          type: 'button',
-          class: chipClass,
-          onclick: function () {
-            $('#w-plat').value = p;
-            $$('#detected-plats .chip').forEach(function (c) { c.classList.toggle('on', c.textContent === p); });
-            toast('Plataforma elegida: ' + p);
-          }
-        }, p));
-      }
-    });
+  list.replaceChildren();
 
-    if (queryTitle) {
-      list.append(h('a', {
-        href: 'https://www.justwatch.com/mx/buscar?q=' + encodeURIComponent(queryTitle),
-        target: '_blank', rel: 'noopener noreferrer',
-        class: 'chip', style: 'text-decoration:none;border-style:dashed;color:var(--gold)',
-        text: 'Verificar en JustWatch MX ↗'
-      }));
+  var unique = [];
+
+  (plats || []).forEach(function (p) {
+    if (p && unique.indexOf(p) === -1) {
+      unique.push(p);
     }
+  });
+
+  box.hidden = false;
+
+  if (unique.length) {
+    unique.forEach(function (p) {
+      list.append(h('button', {
+        type: 'button',
+        class: 'chip' + ($('#w-plat').value === p ? ' on' : ''),
+        onclick: function () {
+          $('#w-plat').value = p;
+
+          $$('#detected-plats .chip').forEach(function (c) {
+            c.classList.toggle('on', c.textContent === p);
+          });
+
+          toast('Plataforma seleccionada: ' + p);
+        }
+      }, p));
+    });
+  } else {
+    list.append(h('span', {
+      class: 'auto-sub',
+      text: 'No se encontraron plataformas verificadas.'
+    }));
   }
 
+  if (queryTitle) {
+    list.append(h('a', {
+      href: 'https://www.justwatch.com/mx/buscar?q=' +
+        encodeURIComponent(queryTitle),
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'chip',
+      style: 'text-decoration:none;border-style:dashed;color:var(--gold)',
+      text: 'Consultar disponibilidad ↗'
+    }));
+
+    if (kind === 'anime') {
+      var sites = [
+        {
+          name: 'JKanime',
+          url: 'https://jkanime.net/es/buscar/?q='
+        },
+        {
+          name: 'AnimeFLV',
+          url: 'https://animeflv.net/browse?q='
+        },
+        {
+          name: 'MonosChinos',
+          url: 'https://monoschinos2.com/'
+        }
+      ];
+
+      sites.forEach(function (site) {
+        list.append(h('a', {
+          href: site.url + encodeURIComponent(queryTitle),
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'chip',
+          style: 'text-decoration:none',
+          text: site.name + ' ↗'
+        }));
+      });
+    }
+  }
+}
   var searchTimer = null;
 
-  function fetchAllMatches(query) {
-    if (!query || query.length < 2) return Promise.resolve([]);
-    var cleanQ = encodeURIComponent(query.trim());
+function fetchAllMatches(query) {
+  if (!query || query.trim().length < 2) {
+    return Promise.resolve([]);
+  }
 
-    var pAnime = fetch('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=4')
-      .then(function(r) { return r.ok ? r.json() : { data: [] }; })
-      .then(function(d) {
-        return (d.data || []).map(function(a) {
-          var plats = [];
-          if (a.streaming) {
-            a.streaming.forEach(function(s) { if (s.name) plats.push(s.name); });
-          }
-          if (!plats.length) plats.push('Crunchyroll');
-          return {
-            title: a.title_english || a.title,
-            kind: 'anime',
-            malId: a.mal_id,
-            img: (a.images && a.images.jpg && a.images.jpg.image_url) || '',
-            plats: plats
-          };
-        });
-      }).catch(function() { return []; });
+  var cleanQ = encodeURIComponent(query.trim());
 
-    var pSeries = fetch('https://api.tvmaze.com/search/shows?q=' + cleanQ)
-      .then(function(r) { return r.ok ? r.json() : []; })
-      .then(function(d) {
-        return (Array.isArray(d) ? d.slice(0, 4) : []).map(function(s) {
+  var pAnime = fetch(
+    'https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=5'
+  )
+    .then(function (r) {
+      return r.ok ? r.json() : { data: [] };
+    })
+    .then(function (d) {
+      return (d.data || []).map(function (a) {
+        var plats = [];
+
+        if (Array.isArray(a.streaming)) {
+          a.streaming.forEach(function (s) {
+            if (s.name && plats.indexOf(s.name) === -1) {
+              plats.push(s.name);
+            }
+          });
+        }
+
+        return {
+          title: a.title_english || a.title,
+          kind: 'anime',
+          malId: a.mal_id,
+          img: (a.images &&
+                a.images.jpg &&
+                a.images.jpg.image_url) || '',
+          plats: plats
+        };
+      });
+    })
+    .catch(function () {
+      return [];
+    });
+
+  var pSeries = fetch(
+    'https://api.tvmaze.com/search/shows?q=' + cleanQ
+  )
+    .then(function (r) {
+      return r.ok ? r.json() : [];
+    })
+    .then(function (d) {
+      return (Array.isArray(d) ? d.slice(0, 5) : [])
+        .map(function (s) {
           var sh = s.show || {};
           var plats = [];
-          if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
-          if (sh.network && sh.network.name) plats.push(sh.network.name);
-          var isAnime = (sh.type === 'Animation' && sh.language === 'Japanese');
+
+          if (sh.webChannel && sh.webChannel.name) {
+            plats.push(sh.webChannel.name);
+          }
+
+          if (sh.network && sh.network.name) {
+            plats.push(sh.network.name);
+          }
+
+          var isAnime =
+            sh.type === 'Animation' &&
+            sh.language === 'Japanese';
+
           return {
             title: sh.name,
             kind: isAnime ? 'anime' : 'serie',
@@ -319,112 +377,234 @@ const firebaseConfig = {
             plats: plats
           };
         });
-      }).catch(function() { return []; });
+    })
+    .catch(function () {
+      return [];
+    });
 
-    return Promise.all([pAnime, pSeries]).then(function(results) {
+  return Promise.all([pAnime, pSeries])
+    .then(function (results) {
       var combined = [].concat(results[0], results[1]);
-      if (!combined.length) {
-        combined.push({
-          title: query.trim(),
-          kind: 'serie',
-          img: '',
-          plats: []
-        });
-      }
+      var seen = {};
+
+      combined = combined.filter(function (item) {
+        if (!item.title) return false;
+
+        var key = item.kind + ':' +
+          item.title.toLowerCase().trim();
+
+        if (seen[key]) return false;
+
+        seen[key] = true;
+        return true;
+      });
+
       return combined;
     });
-  }
+}
 
-  function setupAutocomplete() {
-    var input = $('#w-title');
-    var dropdown = $('#autocomplete-list');
+function setupAutocomplete() {
+  var input = $('#w-title');
+  var dropdown = $('#autocomplete-list');
+  var requestId = 0;
 
-    input.addEventListener('input', function() {
-      var val = this.value.trim();
-      clearTimeout(searchTimer);
-      if (val.length < 2) {
-        dropdown.hidden = true;
-        return;
-      }
-      searchTimer = setTimeout(function() {
-        fetchAllMatches(val).then(function(items) {
-          dropdown.replaceChildren();
-          if (!items.length) {
-            dropdown.hidden = true;
-            return;
-          }
-          dropdown.hidden = false;
-          items.forEach(function(it) {
-            dropdown.append(h('button', {
-              type: 'button', class: 'auto-item',
-              onclick: function() {
-                input.value = it.title;
-                $('#w-kind').value = it.kind;
-                $('#w-cover').value = it.img;
-                if (it.plats.length) {
-                  $('#w-plat').value = it.plats[0];
-                  setDetectedPlatforms(it.plats, it.title);
-                }
-                dropdown.hidden = true;
-                toast('¡Seleccionado con éxito!');
+  input.addEventListener('input', function () {
+    var val = this.value.trim();
+
+    clearTimeout(searchTimer);
+
+    requestId++;
+
+    var currentRequest = requestId;
+
+    if (val.length < 2) {
+      dropdown.hidden = true;
+      dropdown.replaceChildren();
+      return;
+    }
+
+    searchTimer = setTimeout(function () {
+      fetchAllMatches(val).then(function (items) {
+
+        if (currentRequest !== requestId) return;
+
+        dropdown.replaceChildren();
+
+        if (!items.length) {
+          dropdown.hidden = true;
+          return;
+        }
+
+        dropdown.hidden = false;
+
+        items.forEach(function (it) {
+          dropdown.append(h('button', {
+            type: 'button',
+            class: 'auto-item',
+
+            onclick: function () {
+              input.value = it.title;
+
+              $('#w-kind').value = it.kind;
+              $('#w-cover').value = it.img;
+
+              $('#w-plat').value = '';
+
+              if (it.plats.length) {
+                $('#w-plat').value = it.plats[0];
               }
-            },
-              it.img ? h('img', { src: it.img, alt: it.title }) : null,
-              h('div', { class: 'auto-info' },
-                h('span', { class: 'auto-title', text: it.title }),
-                h('span', { class: 'auto-sub', text: (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '') })
-              )
-            ));
-          });
-        });
-      }, 350);
-    });
 
-    document.addEventListener('click', function(e) {
-      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.hidden = true;
-      }
-    });
-  }
+              setDetectedPlatforms(
+                it.plats,
+                it.title,
+                it.kind
+              );
+
+              dropdown.hidden = true;
+
+              toast('¡Título seleccionado!');
+            }
+          },
+
+            it.img
+              ? h('img', {
+                  src: it.img,
+                  alt: it.title
+                })
+              : null,
+
+            h('div', { class: 'auto-info' },
+
+              h('span', {
+                class: 'auto-title',
+                text: it.title
+              }),
+
+              h('span', {
+                class: 'auto-sub',
+                text:
+                  (KINDS[it.kind] || 'Título') +
+                  (it.plats.length
+                    ? ' · ' + it.plats.join(', ')
+                    : ' · Plataforma no verificada')
+              })
+
+            )
+          ));
+        });
+
+      });
+    }, 350);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (
+      !input.contains(e.target) &&
+      !dropdown.contains(e.target)
+    ) {
+      dropdown.hidden = true;
+    }
+  });
+}
 
   function searchCoverAPI() {
-    var q = $('#w-title').value.trim();
-    if (!q) { toast('Escribe primero el título para buscar.'); $('#w-title').focus(); return; }
-    var box = $('#api-box'), res = $('#api-results'), st = $('#api-status');
-    box.hidden = false;
-    res.replaceChildren();
-    st.textContent = 'Buscando coincidencias…';
+  var q = $('#w-title').value.trim();
 
-    fetchAllMatches(q).then(function(items) {
-      if (!items.length) {
-        st.textContent = 'Sin coincidencias. Puedes elegir categoría y plataforma manualmente.';
-        setDetectedPlatforms([], q);
-        return;
-      }
-      st.textContent = 'Selecciona el resultado correcto:';
-      items.forEach(function(it) {
-        var subtitle = (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '');
-        res.append(h('button', {
-          type: 'button', class: 'api-item',
-          onclick: function() {
-            $('#w-title').value = it.title;
-            $('#w-kind').value = it.kind;
-            $('#w-cover').value = it.img;
-            if (it.plats.length && !$('#w-plat').value) {
-              $('#w-plat').value = it.plats[0];
-            }
-            box.hidden = true;
-            setDetectedPlatforms(it.plats, it.title);
-            toast('Detectado como ' + (KINDS[it.kind] || it.kind));
-          }
-        },
-          h('img', { src: it.img, alt: it.title }),
-          h('span', { text: it.title }),
-          h('span', { style: 'font-size:.7rem;color:var(--rose)', text: subtitle })
-        ));
-      });
-    });
+  if (!q) {
+    toast('Escribe primero el título para buscar.');
+    $('#w-title').focus();
+    return;
   }
+
+  var box = $('#api-box');
+  var res = $('#api-results');
+  var st = $('#api-status');
+
+  var requestId = Date.now();
+
+  box.hidden = false;
+  res.replaceChildren();
+
+  st.textContent = 'Buscando en los catálogos...';
+
+  fetchAllMatches(q).then(function (items) {
+
+    if (!items.length) {
+      st.textContent =
+        'No encontramos coincidencias. Puedes registrar el título manualmente.';
+
+      setDetectedPlatforms([], q, $('#w-kind').value);
+
+      return;
+    }
+
+    st.textContent = 'Selecciona el resultado correcto:';
+
+    items.forEach(function (it) {
+
+      var subtitle =
+        (KINDS[it.kind] || 'Título') +
+        (it.plats.length
+          ? ' · ' + it.plats.join(', ')
+          : ' · Sin plataforma verificada');
+
+      res.append(h('button', {
+        type: 'button',
+        class: 'api-item',
+
+        onclick: function () {
+
+          $('#w-title').value = it.title;
+          $('#w-kind').value = it.kind;
+          $('#w-cover').value = it.img;
+
+          $('#w-plat').value =
+            it.plats.length ? it.plats[0] : '';
+
+          box.hidden = true;
+
+          setDetectedPlatforms(
+            it.plats,
+            it.title,
+            it.kind
+          );
+
+          toast(
+            'Detectado como ' +
+            (KINDS[it.kind] || it.kind)
+          );
+        }
+
+      },
+
+        it.img
+          ? h('img', {
+              src: it.img,
+              alt: it.title
+            })
+          : h('div', {
+              class: 'w-cover-empty',
+              text: 'Sin portada'
+            }),
+
+        h('span', {
+          text: it.title
+        }),
+
+        h('span', {
+          style: 'font-size:.7rem;color:var(--rose)',
+          text: subtitle
+        })
+
+      ));
+
+    });
+
+  }).catch(function () {
+    st.textContent =
+      'Error al consultar los catálogos. Intenta nuevamente.';
+  });
+}
 
   function calcMetacritic(w) {
     var sa = typeof w.scoreA === 'number' ? w.scoreA : null;
