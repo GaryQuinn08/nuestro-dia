@@ -225,14 +225,13 @@ const firebaseConfig = {
     });
   }
 
-function setDetectedPlatforms(plats, queryTitle) {
+  function setDetectedPlatforms(plats, queryTitle) {
     var box = $('#detected-plats-box'), list = $('#detected-plats');
     list.replaceChildren();
     
     var unique = [];
     (plats || []).forEach(function (p) { if (p && unique.indexOf(p) === -1) unique.push(p); });
     
-    // Agregamos plataformas de anime en español comunes por defecto si es anime o serie
     var defaultAnimeSites = ['JKanime', 'AnimeFLV', 'MonosChinos'];
     defaultAnimeSites.forEach(function(site) {
       if (unique.indexOf(site) === -1) unique.push(site);
@@ -240,7 +239,6 @@ function setDetectedPlatforms(plats, queryTitle) {
 
     box.hidden = false;
     unique.forEach(function (p) {
-      // Verificamos si es una plataforma web para armar un enlace de búsqueda directa si el usuario lo toca
       var isCustomWeb = ['JKanime', 'AnimeFLV', 'MonosChinos'].indexOf(p) !== -1;
       var chipClass = 'chip' + ($('#w-plat').value === p ? ' on' : '');
       
@@ -279,9 +277,10 @@ function setDetectedPlatforms(plats, queryTitle) {
       }));
     }
   }
+
   var searchTimer = null;
 
-function fetchAllMatches(query) {
+  function fetchAllMatches(query) {
     if (!query || query.length < 2) return Promise.resolve([]);
     var cleanQ = encodeURIComponent(query.trim());
 
@@ -324,7 +323,6 @@ function fetchAllMatches(query) {
 
     return Promise.all([pAnime, pSeries]).then(function(results) {
       var combined = [].concat(results[0], results[1]);
-      // Si las APIs fallan o no devuelven nada, agregamos una opción manual basada en lo que escribió para que nunca se quede vacío
       if (!combined.length) {
         combined.push({
           title: query.trim(),
@@ -663,37 +661,39 @@ function fetchAllMatches(query) {
           h('p', { class: 'pinned-letter-b', text: pinned.body }),
           h('p', { class: 'pinned-letter-m', text: fmtShort(new Date(pinned.createdAt || Date.now())) })
         ),
-        h('button', {
-          type: 'button', class: 'icon-btn', 'aria-label': 'Desfijar nota',
-          onclick: function () { run(function () { return upd('letters', pinned.id, { pinned: false }); }); }
-        }, '✕')
+        pinned.from === S.me ? h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Desfijar', onclick: function () { run(function () { return upd('letters', pinned.id, { pinned: false }); }); } }, icon('pin')) : null
       ));
     } else {
       pBox.hidden = true;
     }
 
-    var box = $('#lt-list');
-    box.replaceChildren();
+    var ul = $('#letters-list');
+    ul.replaceChildren();
     if (!list.length) {
-      box.append(h('p', { class: 'empty', text: S.loaded.letters ? 'Todavía no hay cartitas. Escribe la primera arriba.' : 'Cargando…' }));
+      ul.append(emptyMsg('letters', 'No hay cartitas todavía. Escribe la primera arriba.'));
       return;
     }
     list.forEach(function (l) {
-      box.append(h('div', { class: 'letter' + (l.pinned ? ' pinned' : '') },
-        h('div', { class: 'letter-head' },
+      ul.append(h('div', { class: 'letter-card' + (l.pinned ? ' is-pinned' : '') },
+        h('div', { class: 'letter-header' },
           h('span', { class: 'letter-from', text: 'De ' + nm(l.from || 'a') }),
-          h('div', { class: 'row-actions' },
+          h('div', { style: 'display:flex;gap:6px;align-items:center' },
             h('span', { class: 'letter-date', text: fmtShort(new Date(l.createdAt || Date.now())) }),
-            h('button', {
-              type: 'button', class: 'icon-btn' + (l.pinned ? ' armed' : ''),
+            l.from === S.me ? h('button', {
+              type: 'button', class: 'icon-btn' + (l.pinned ? ' on' : ''),
+              'aria-label': l.pinned ? 'Desfijar' : 'Fijar nota',
               onclick: function () {
-                run(function () {
-                  if (!l.pinned && pinned) upd('letters', pinned.id, { pinned: false });
-                  return upd('letters', l.id, { pinned: !l.pinned });
-                });
+                var willPin = !l.pinned;
+                var p = Promise.resolve();
+                if (willPin) {
+                  S.letters.forEach(function (x) {
+                    if (x.pinned && x.id !== l.id) p = p.then(function () { return upd('letters', x.id, { pinned: false }); });
+                  });
+                }
+                p.then(function () { return run(function () { return upd('letters', l.id, { pinned: willPin }); }); });
               }
-            }, l.pinned ? 'Fijada' : 'Fijar'),
-            delBtn('letters', l.id)
+            }, icon('pin')) : null,
+            l.from === S.me ? delBtn('letters', l.id) : null
           )
         ),
         h('p', { class: 'letter-body', text: l.body })
@@ -701,368 +701,367 @@ function fetchAllMatches(query) {
     });
   }
 
-  function nextDate(c) {
-    var t = todayISO(), d = c.date, years = 0;
-    if (c.yearly) {
-      var p = c.date.split('-'), y = new Date().getFullYear(), cand = y + '-' + p[1] + '-' + p[2];
-      if (cand < t) { y++; cand = y + '-' + p[1] + '-' + p[2]; }
-      d = cand; years = y - Number(p[0]);
-    }
-    return { date: d, days: dayDiff(t, d), years: years };
-  }
   function renderCountdowns() {
-    var box = $('#cd-list');
-    box.replaceChildren();
-    var list = S.countdowns.map(function (c) { return { c: c, n: nextDate(c) }; })
-      .sort(function (a, b) {
-        var pa = a.n.days >= 0 ? 0 : 1, pb = b.n.days >= 0 ? 0 : 1;
-        return pa - pb || (pa === 0 ? a.n.days - b.n.days : b.n.days - a.n.days);
-      });
-    if (!list.length) box.append(h('p', { class: 'empty', text: S.loaded.countdowns ? 'Agrega una fecha que esperen y verán cuántos días faltan.' : 'Cargando…' }));
-    list.forEach(function (o) {
-      var days = o.n.days, past = days < 0, abs = Math.abs(days);
-      var key = days === 0 ? 'Es hoy' : past ? 'Han pasado' : 'Faltan';
-      var dateLine = fmtFull(parse(o.n.date)) + (o.c.yearly && o.n.years > 0 ? ' · cumplen ' + o.n.years + ' ' + pl(o.n.years, 'año', 'años') : '');
-      box.append(h('div', { class: 'cd' },
-        delBtn('countdowns', o.c.id),
-        h('span', { class: 'cd-k', text: key }),
-        days === 0 ? h('span', { class: 'cd-n', text: '¡Hoy!' }) : h('span', { class: 'cd-n', text: abs }),
-        days === 0 ? null : h('span', { class: 'cd-u', text: pl(abs, 'día', 'días') }),
-        h('span', { class: 'cd-t', text: o.c.title }),
-        h('span', { class: 'cd-d', text: dateLine })));
-    });
-    var next = list.filter(function (o) { return o.n.days >= 0; })[0], rb = $('#ribbon');
-    if (!next) { rb.hidden = true; return; }
-    rb.hidden = false;
-    rb.replaceChildren();
-    if (next.n.days === 0) rb.append(h('b', { text: 'Hoy' }), ' es ' + next.c.title);
-    else if (next.n.days === 1) rb.append(h('b', { text: 'Mañana' }), ' es ' + next.c.title);
-    else rb.append('Faltan ', h('b', { text: next.n.days }), ' días para ' + next.c.title);
-  }
-  function renderMemories() {
-    var list = S.memories.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0); });
-    var box = $('#m-list');
-    box.replaceChildren();
+    var ul = $('#cd-list');
+    ul.replaceChildren();
+    var list = S.countdowns.slice().sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
     if (!list.length) {
-      box.append(h('p', { class: 'empty', text: S.loaded.memories ? 'Guarden aquí sus fotos y momentos especiales.' : 'Cargando…' }));
+      ul.append(emptyMsg('countdowns', 'No hay cuentas regresivas. Agrega una fecha especial arriba.'));
       return;
     }
-    list.forEach(function (m) {
-      box.append(h('article', { class: 'mem-card' },
-        m.photo ? h('img', { class: 'mem-img', src: m.photo, alt: m.title, loading: 'lazy' }) : null,
-        h('div', { class: 'mem-body' },
-          h('div', { class: 'mem-top' },
-            h('time', { text: m.date ? fmtShort(parse(m.date)) : '' }),
-            delBtn('memories', m.id)
-          ),
-          h('h3', { class: 'mem-t', text: m.title }),
-          m.note ? h('p', { class: 'mem-n', text: m.note }) : null
+    var now = todayISO();
+    list.forEach(function (c) {
+      var diff = dayDiff(now, c.date);
+      var badgeText = diff > 0 ? 'Faltan ' + diff + ' ' + pl(diff, 'día', 'días') : diff === 0 ? '¡Es hoy!' : 'Pasó hace ' + Math.abs(diff) + ' ' + pl(Math.abs(diff), 'día', 'días');
+      ul.append(h('li', { class: 'cd-card' },
+        h('div', {},
+          h('h3', { class: 'cd-title', text: c.title }),
+          h('p', { class: 'cd-date', text: fmtFull(parse(c.date)) })
+        ),
+        h('div', { style: 'display:flex;gap:12px;align-items:center' },
+          h('span', { class: 'cd-badge' + (diff === 0 ? ' today' : diff < 0 ? ' past' : '') }, badgeText),
+          delBtn('countdowns', c.id)
         )
       ));
     });
   }
+
   function renderPolls() {
-    var box = $('#v-list');
-    box.replaceChildren();
-    var list = S.polls.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
-    if (!list.length) box.append(h('p', { class: 'empty', text: S.loaded.polls ? 'Sin votaciones. Creen una pregunta con dos opciones.' : 'Cargando…' }));
-    list.forEach(function (p) {
-      var ch = p.choices || {}, vals = Object.keys(ch).map(function (k) { return ch[k]; });
-      var total = vals.length, cnt = { a: vals.filter(function (v) { return v === 'a'; }).length, b: vals.filter(function (v) { return v === 'b'; }).length };
-      var mine = S.uid ? ch[S.uid] : null, reveal = total >= 2, tie = reveal && cnt.a === cnt.b;
-      var status;
-      if (S.ties[p.id]) status = h('p', { class: 'poll-s' }, 'El azar eligió: ', h('b', { text: p['opt' + S.ties[p.id].toUpperCase()] }));
-      else if (reveal) status = tie ? h('p', { class: 'poll-s', text: 'Empate. Pueden dejarlo al azar.' })
-        : h('p', { class: 'poll-s' }, 'Ganó: ', h('b', { text: p['opt' + (cnt.a > cnt.b ? 'A' : 'B')] }));
-      else if (total === 0) status = h('p', { class: 'poll-s', text: 'Nadie ha votado todavía.' });
-      else status = h('p', { class: 'poll-s', text: mine ? 'Tu voto está guardado. Falta el otro voto.' : 'Ya hay un voto. Falta el tuyo.' });
-      var opts = h('div', { class: 'opts' }, ['a', 'b'].map(function (k) {
-        var lead = reveal && cnt[k] > cnt[k === 'a' ? 'b' : 'a'];
-        return h('button', {
-          type: 'button', class: 'opt' + (mine === k ? ' mine' : '') + (lead ? ' win' : ''), disabled: !S.uid, 'aria-pressed': String(mine === k),
-          onclick: function () { run(function () { return seq('polls/' + p.id, function () { var c = {}; c['choices.' + S.uid] = k; return updateDoc(doc(db, 'polls/' + p.id), c); }); }); }
-        }, h('span', { text: p['opt' + k.toUpperCase()] }), reveal ? h('span', { class: 'opt-n', text: cnt[k] + ' ' + pl(cnt[k], 'voto', 'votos') }) : (mine === k ? h('span', { class: 'opt-n', text: 'Tu voto' }) : null));
-      }));
-      var actions = h('div', { class: 'poll-actions' },
-        tie && !S.ties[p.id] ? h('button', { type: 'button', class: 'btn ghost', onclick: function () { S.ties[p.id] = Math.random() < 0.5 ? 'a' : 'b'; renderPolls(); } }, 'Elegir al azar') : null,
-        total > 0 ? h('button', { type: 'button', class: 'btn ghost', onclick: function () {
-          delete S.ties[p.id];
-          run(function () { return seq('polls/' + p.id, function () { return setDoc(doc(db, 'polls/' + p.id), { question: p.question, optA: p.optA, optB: p.optB, createdAt: p.createdAt || Date.now(), choices: {} }); }); });
-        } }, 'Reiniciar votos') : null);
-      box.append(h('div', { class: 'poll' },
-        h('div', { class: 'poll-head' }, h('h3', { class: 'poll-q', text: p.question }), delBtn('polls', p.id)),
-        opts, status, actions.children.length ? actions : null));
+    var ul = $('#poll-list');
+    ul.replaceChildren();
+    if (!S.polls.length) {
+      ul.append(emptyMsg('polls', 'No hay votaciones activas. Crea una encuesta arriba.'));
+      return;
+    }
+    S.polls.forEach(function (p) {
+      var votesA = p.votesA || [];
+      var votesB = p.votesB || [];
+      var votedA = votesA.includes(S.me);
+      var votedB = votesB.includes(S.me);
+
+      ul.append(h('div', { class: 'poll-card' },
+        h('h3', { class: 'poll-q', text: p.question }),
+        h('div', { class: 'poll-opts' },
+          h('button', {
+            type: 'button', class: 'poll-opt' + (votedA ? ' selected' : ''),
+            onclick: function () {
+              var nA = votedA ? votesA.filter(function (x) { return x !== S.me; }) : votesA.concat([S.me]);
+              var nB = votesB.filter(function (x) { return x !== S.me; });
+              run(function () { return upd('polls', p.id, { votesA: nA, votesB: nB }); });
+            }
+          },
+            h('span', { text: p.optA }),
+            h('span', { class: 'poll-count', text: votesA.length + ' ' + pl(votesA.length, 'voto', 'votos') })
+          ),
+          h('button', {
+            type: 'button', class: 'poll-opt' + (votedB ? ' selected' : ''),
+            onclick: function () {
+              var nB = votedB ? votesB.filter(function (x) { return x !== S.me; }) : votesB.concat([S.me]);
+              var nA = votesA.filter(function (x) { return x !== S.me; });
+              run(function () { return upd('polls', p.id, { votesA: nA, votesB: nB }); });
+            }
+          },
+            h('span', { text: p.optB }),
+            h('span', { class: 'poll-count', text: votesB.length + ' ' + pl(votesB.length, 'voto', 'votos') })
+          )
+        ),
+        h('div', { style: 'display:flex;justify-content:flex-end;margin-top:8px' }, delBtn('polls', p.id))
+      ));
+    });
+  }
+
+  function renderMemories() {
+    var grid = $('#mem-grid');
+    grid.replaceChildren();
+    var list = S.memories.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    if (!list.length) {
+      grid.append(h('p', { class: 'empty', text: S.loaded.memories ? 'Aún no hay recuerdos guardados. Sube la primera foto arriba.' : 'Cargando recuerdos…' }));
+      return;
+    }
+    list.forEach(function (m) {
+      grid.append(h('div', { class: 'mem-card' },
+        m.image ? h('img', { src: m.image, alt: m.caption || 'Recuerdo' }) : h('div', { class: 'mem-noimg', text: 'Sin foto' }),
+        h('div', { class: 'mem-body' },
+          m.caption ? h('p', { class: 'mem-cap', text: m.caption }) : null,
+          h('div', { class: 'mem-foot' },
+            h('span', { class: 'mem-date', text: fmtShort(new Date(m.createdAt || Date.now())) }),
+            delBtn('memories', m.id)
+          )
+        )
+      ));
     });
   }
 
   function renderAll() {
-    renderHoy(); renderWatch(); renderPlans(); renderTodos(); renderCountdowns(); renderMemories(); renderPolls(); renderLetters();
+    renderHoy();
+    renderWatch();
+    renderPlans();
+    renderTodos();
+    renderLetters();
+    renderCountdowns();
+    renderPolls();
+    renderMemories();
   }
 
-  function setTab(t) {
-    S.tab = t;
-    $$('.tab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === t)); });
-    $$('.panel').forEach(function (p) { p.hidden = p.id !== 'tab-' + t; });
-    try { localStorage.setItem('nd-tab', t); } catch (e) {}
-    window.scrollTo(0, 0);
-  }
-  function setSub(s) {
-    S.sub = s;
-    $$('[data-sub]').forEach(function (b) { b.classList.toggle('on', b.dataset.sub === s); b.setAttribute('aria-selected', String(b.dataset.sub === s)); });
-    ['cartas', 'recuerdos', 'cuenta', 'votos'].forEach(function (k) { $('#sub-' + k).hidden = k !== s; });
-  }
+  document.addEventListener('DOMContentLoaded', function () {
+    $('#w-day').value = todayISO();
+    $('#p-date').value = todayISO();
+    $('#cd-date').value = todayISO();
+    buildCats();
+    buildIdeas();
+    setupAutocomplete();
 
-  function onSubmit(id, fn) {
-    $(id).addEventListener('submit', function (e) {
-      e.preventDefault();
-      var btn = e.target.querySelector('button[type="submit"]');
-      btn.disabled = true;
-      Promise.resolve(fn()).then(function (ok) { if (ok) e.target.dataset.ok = '1'; }).then(function () { btn.disabled = false; });
+    $$('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var t = this.dataset.tab;
+        S.tab = t;
+        $$('.tab-btn').forEach(function (b) {
+          var on = b.dataset.tab === t;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-selected', String(on));
+        });
+        $$('.tab-pane').forEach(function (p) {
+          p.hidden = p.id !== 'tab-' + t;
+        });
+      });
     });
-  }
-  function wire() {
-    $$('.tab').forEach(function (b) { b.addEventListener('click', function () { setTab(b.dataset.tab); }); });
-    $$('[data-sub]').forEach(function (b) { b.addEventListener('click', function () { setSub(b.dataset.sub); }); });
-    $$('[data-ic]').forEach(function (el) { el.replaceWith(icon(el.dataset.ic)); });
-    $('#ic-pencil').replaceWith(icon('pencil'));
 
-    $('#day-prev').addEventListener('click', function () { S.day = addDays(S.day, -1); renderHoy(); });
-    $('#day-next').addEventListener('click', function () { S.day = addDays(S.day, 1); renderHoy(); });
-    $('#day-today').addEventListener('click', function () { S.day = todayISO(); renderHoy(); });
-
-    $('#btn-names').addEventListener('click', function () {
-      var p = $('#names'), open = p.hidden;
-      p.hidden = !open;
-      this.setAttribute('aria-expanded', String(open));
-      if (open) {
-        $('#name-a').value = S.settings.nameA;
-        $('#name-b').value = S.settings.nameB;
-        $('#who-am-i').value = S.me;
-        $('#name-a').focus();
-      }
+    $$('.sub-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var s = this.dataset.sub;
+        S.sub = s;
+        $$('.sub-tab').forEach(function (b) {
+          var on = b.dataset.sub === s;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-selected', String(on));
+        });
+        $$('.sub-pane').forEach(function (p) {
+          p.hidden = p.id !== 'sub-' + s;
+        });
+      });
     });
-    onSubmit('#f-names', function () {
-      var a = $('#name-a').value.trim() || S.settings.nameA, b = $('#name-b').value.trim() || S.settings.nameB;
-      S.me = $('#who-am-i').value;
+
+    $('#who-am-i').addEventListener('change', function () {
+      S.me = this.value;
       try { localStorage.setItem('nd-me', S.me); } catch (e) {}
-      return run(function () { return seq('settings/main', function () { return setDoc(doc(db, 'settings/main'), { nameA: a, nameB: b }); }); }).then(function (ok) {
-        if (ok) { $('#names').hidden = true; $('#btn-names').setAttribute('aria-expanded', 'false'); toast('Preferencias guardadas'); }
-        return ok;
-      });
+      renderAll();
+      toast('Ahora eres ' + nm(S.me));
     });
 
-    onSubmit('#f-ev', function () {
+    $('#ev-form').addEventListener('submit', function (e) {
+      e.preventDefault();
       var title = $('#ev-title').value.trim();
-      if (!title) return false;
-      return run(function () { return add('events', { date: S.day, time: $('#ev-time').value || '', title: title, note: $('#ev-note').value.trim(), cat: S.evCat, done: false }); }).then(function (ok) {
-        if (ok) { $('#ev-title').value = ''; $('#ev-note').value = ''; $('#ev-time').value = ''; $('#ev-title').focus(); }
-        return ok;
+      var date = $('#ev-date').value || S.day;
+      var time = $('#ev-time').value;
+      var note = $('#ev-note').value.trim();
+      if (!title) return;
+      run(function () {
+        return add('events', { title: title, date: date, time: time, cat: S.evCat, note: note, done: false });
+      }).then(function (ok) {
+        if (ok) {
+          $('#ev-title').value = '';
+          $('#ev-note').value = '';
+          toast('¡Actividad agregada!');
+        }
       });
     });
 
-    $('#btn-search-api').addEventListener('click', searchCoverAPI);
-    $('#api-close').addEventListener('click', function () { $('#api-box').hidden = true; });
-
-    onSubmit('#f-watch', function () {
+    $('#w-form').addEventListener('submit', function (e) {
+      e.preventDefault();
       var title = $('#w-title').value.trim();
-      if (!title) return false;
-      var k = $('#w-kind').value;
-      if (k === 'auto') k = 'serie';
-      return run(function () {
+      var kind = $('#w-kind').value;
+      var cover = $('#w-cover').value.trim();
+      var platform = $('#w-plat').value.trim();
+      if (!title) return;
+      run(function () {
         return add('watch', {
-          title: title,
-          kind: k,
-          platform: $('#w-plat').value.trim(),
-          cover: $('#w-cover').value.trim(),
-          status: 'por-ver',
-          season: 1,
-          ep: 0,
-          scoreA: null,
-          scoreB: null,
-          revA: '',
-          revB: ''
+          title: title, kind: kind, cover: cover, platform: platform,
+          status: 'por-ver', season: 1, ep: 0, rating: 0,
+          scoreA: null, scoreB: null, revA: '', revB: ''
         });
       }).then(function (ok) {
         if (ok) {
           $('#w-title').value = '';
           $('#w-cover').value = '';
           $('#w-plat').value = '';
-          $('#w-kind').value = 'auto';
           $('#api-box').hidden = true;
           $('#detected-plats-box').hidden = true;
-          $('#w-title').focus();
+          toast('¡Título agregado al catálogo!');
         }
-        return ok;
       });
     });
 
-    $('#btn-pick').addEventListener('click', pickRandom);
-    $('#pick-again').addEventListener('click', pickRandom);
+    $('#api-close').addEventListener('click', function () { $('#api-box').hidden = true; });
+    $('#w-search-api').addEventListener('click', searchCoverAPI);
+
     $('#pick-go').addEventListener('click', function () {
-      var id = S.pickId;
-      if (!id) return;
-      run(function () { return upd('watch', id, { status: 'viendo' }); }).then(function (ok) { if (ok) { $('#pick').hidden = true; toast('Pasó a «En curso»'); } });
-    });
-
-    onSubmit('#f-plan', function () {
-      var title = $('#p-title').value.trim();
-      if (!title) return false;
-      var date = $('#p-date').value;
-      return run(function () { return add('plans', { title: title, place: $('#p-place').value.trim(), date: date || '', status: date ? 'agendada' : 'idea' }); }).then(function (ok) {
-        if (ok) { $('#p-title').value = ''; $('#p-place').value = ''; $('#p-date').value = ''; }
-        return ok;
-      });
-    });
-
-    onSubmit('#f-todo', function () {
-      var title = $('#td-title').value.trim();
-      if (!title) return false;
-      return run(function () { return add('todos', { title: title, who: $('#td-who').value, done: false }); }).then(function (ok) {
-        if (ok) { $('#td-title').value = ''; $('#td-title').focus(); }
-        return ok;
-      });
-    });
-
-    $('#lt-pin').classList.add('on');
-    $('#lt-pin').addEventListener('click', function () {
-      S.pinLetter = !S.pinLetter;
-      this.classList.toggle('on', S.pinLetter);
-      this.setAttribute('aria-pressed', String(S.pinLetter));
-    });
-    onSubmit('#f-letter', function () {
-      var body = $('#lt-body').value.trim();
-      if (!body) return false;
-      return run(function () {
-        if (S.pinLetter) {
-          var prevPinned = S.letters.find(function (l) { return l.pinned; });
-          if (prevPinned) upd('letters', prevPinned.id, { pinned: false });
+      if (!S.pickId) return;
+      run(function () { return upd('watch', S.pickId, { status: 'viendo' }); }).then(function (ok) {
+        if (ok) {
+          $('#pick').hidden = true;
+          toast('¡Marcado como En curso!');
         }
-        return add('letters', { body: body, from: S.me, pinned: S.pinLetter });
+      });
+    });
+    $('#pick-again').addEventListener('click', pickRandom);
+    $('#pick-close').addEventListener('click', function () { $('#pick').hidden = true; });
+
+    $('#p-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var title = $('#p-title').value.trim();
+      var place = $('#p-place').value.trim();
+      var date = $('#p-date').value;
+      if (!title) return;
+      run(function () {
+        return add('plans', { title: title, place: place, date: date, status: date ? 'agendada' : 'idea' });
       }).then(function (ok) {
-        if (ok) { $('#lt-body').value = ''; toast('Cartita enviada'); }
-        return ok;
+        if (ok) {
+          $('#p-title').value = '';
+          $('#p-place').value = '';
+          toast('¡Plan guardado!');
+        }
       });
     });
 
-    $('#cd-yearly').addEventListener('click', function () {
-      S.yearly = !S.yearly;
-      this.classList.toggle('on', S.yearly);
-      this.setAttribute('aria-pressed', String(S.yearly));
-    });
-    onSubmit('#f-cd', function () {
-      var title = $('#cd-title').value.trim(), date = $('#cd-date').value;
-      if (!title || !date) return false;
-      return run(function () { return add('countdowns', { title: title, date: date, yearly: S.yearly }); }).then(function (ok) {
-        if (ok) { $('#cd-title').value = ''; $('#cd-date').value = ''; }
-        return ok;
-      });
-    });
-
-    onSubmit('#f-mem', function () {
-      var title = $('#m-title').value.trim(), date = $('#m-date').value;
-      var file = $('#m-photo').files && $('#m-photo').files[0];
-      if (!title || !date) return false;
-      return compressImage(file).then(function (photoData) {
-        return run(function () { return add('memories', { title: title, date: date, note: $('#m-note').value.trim(), photo: photoData }); });
+    $('#td-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var title = $('#td-title').value.trim();
+      var who = $('#td-who').value;
+      if (!title) return;
+      run(function () {
+        return add('todos', { title: title, who: who, done: false });
       }).then(function (ok) {
-        if (ok) { $('#m-title').value = ''; $('#m-note').value = ''; $('#m-photo').value = ''; toast('Recuerdo guardado'); }
-        return ok;
+        if (ok) {
+          $('#td-title').value = '';
+          toast('¡Pendiente agregado!');
+        }
       });
     });
 
-    onSubmit('#f-poll', function () {
-      var q = $('#v-q').value.trim(), a = $('#v-a').value.trim(), b = $('#v-b').value.trim();
-      if (!q || !a || !b) return false;
-      return run(function () { return add('polls', { question: q, optA: a, optB: b, choices: {} }); }).then(function (ok) {
-        if (ok) { $('#v-q').value = ''; $('#v-a').value = ''; $('#v-b').value = ''; }
-        return ok;
+    $('#letter-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var body = $('#letter-body').value.trim();
+      if (!body) return;
+      run(function () {
+        return add('letters', { body: body, from: S.me, pinned: false });
+      }).then(function (ok) {
+        if (ok) {
+          $('#letter-body').value = '';
+          toast('¡Cartita enviada!');
+        }
       });
     });
-  }
 
-  var errShown = false;
-  var COLS = ['events', 'watch', 'plans', 'todos', 'memories', 'countdowns', 'polls', 'letters'];
-  function listen(name) {
-    unsubs.push(onSnapshot(collection(db, name), function (snap) {
-      S[name] = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
-      S.loaded[name] = true;
-      renderAll();
-    }, function (e) {
-      S.loaded[name] = true; renderAll();
-      if (!errShown) {
-        errShown = true;
-        if (e && e.code === 'permission-denied') { signOut(auth); $('#lg-msg').textContent = 'Esa cuenta de Google no tiene permiso. Entra con el correo de ustedes.'; }
-        else toast('Se perdió la conexión con Firebase.');
-      }
-    }));
-  }
-  function startData(user) {
-    S.uid = user.uid; errShown = false;
-    unsubs.push(onSnapshot(doc(db, 'settings/main'), function (snap) {
-      var d = snap.data() || {};
-      S.settings = { nameA: d.nameA || 'Gary', nameB: d.nameB || 'Yumi' };
-      buildWho(); renderAll();
-    }, function () {}));
-    COLS.forEach(listen);
-  }
-  function stopData() {
-    unsubs.forEach(function (f) { try { f(); } catch (e) {} });
-    unsubs = [];
-    S.uid = null; S.loaded = {};
-    COLS.forEach(function (k) { S[k] = []; });
-    renderAll();
-  }
-  function showLogin(on) {
-    $('#login').hidden = !on;
-    $('#shell').hidden = on;
-    $('#btn-names').hidden = on;
-    $('#names').hidden = true;
-    $('#btn-names').setAttribute('aria-expanded', 'false');
-  }
+    $('#cd-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var title = $('#cd-title').value.trim();
+      var date = $('#cd-date').value;
+      if (!title || !date) return;
+      run(function () {
+        return add('countdowns', { title: title, date: date });
+      }).then(function (ok) {
+        if (ok) {
+          $('#cd-title').value = '';
+          toast('¡Cuenta regresiva creada!');
+        }
+      });
+    });
 
-  function boot() {
-    $('#today').textContent = fmtLong(new Date());
-    $('#m-date').value = todayISO();
-    buildCats(); buildIdeas(); buildWho(); setupAutocomplete(); wire(); renderAll();
-    try { var t = localStorage.getItem('nd-tab'); if (t && $('#tab-' + t)) setTab(t); } catch (e) {}
-    window.scrollTo(0, 0);
+    $('#poll-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var q = $('#poll-q').value.trim();
+      var optA = $('#poll-optA').value.trim();
+      var optB = $('#poll-optB').value.trim();
+      if (!q || !optA || !optB) return;
+      run(function () {
+        return add('polls', { question: q, optA: optA, optB: optB, votesA: [], votesB: [] });
+      }).then(function (ok) {
+        if (ok) {
+          $('#poll-q').value = '';
+          $('#poll-optA').value = '';
+          $('#poll-optB').value = '';
+          toast('¡Encuesta creada!');
+        }
+      });
+    });
 
-    var webStorageOk = false;
+    $('#mem-file').addEventListener('change', function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      compressImage(file).then(function (dataUrl) {
+        var cap = $('#mem-cap').value.trim();
+        run(function () {
+          return add('memories', { image: dataUrl, caption: cap });
+        }).then(function (ok) {
+          if (ok) {
+            $('#mem-file').value = '';
+            $('#mem-cap').value = '';
+            toast('¡Recuerdo guardado con éxito!');
+          }
+        });
+      }).catch(function () {
+        toast('No se pudo procesar la imagen.');
+      });
+    });
+
     try {
-      localStorage.setItem('nd-storage-check', '1');
-      localStorage.removeItem('nd-storage-check');
-      webStorageOk = true;
-    } catch (e) {}
-    if (location.protocol === 'file:' || !webStorageOk) {
-      $('#offline').hidden = false;
-      $('#offline').textContent = 'Abre la app desde un servidor local (por ejemplo http://localhost) para usar Firebase y guardar tus datos.';
-      return;
+      var app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, function (user) {
+        var btn = $('#auth-btn');
+        if (user) {
+          S.uid = user.uid;
+          btn.textContent = 'Salir (' + (user.displayName || user.email || 'Conectado') + ')';
+          btn.onclick = function () { signOut(auth); };
+          loadData();
+        } else {
+          S.uid = null;
+          btn.textContent = 'Iniciar sesión con Google';
+          btn.onclick = function () {
+            signInWithPopup(auth, new GoogleAuthProvider()).catch(function (e) {
+              toast('No se pudo iniciar sesión.');
+            });
+          };
+          loadData(); // Permite lectura anónima si las reglas de Firestore lo permiten
+        }
+      });
+    } catch (e) {
+      toast('Error al inicializar Firebase.');
     }
-    if (/PEGA_AQUI/.test(firebaseConfig.apiKey)) { $('#offline').hidden = false; return; }
-    var app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+  });
 
-    $('#btn-google').addEventListener('click', function () {
-      var btn = this, msg = $('#lg-msg');
-      msg.textContent = '';
-      btn.disabled = true;
-      signInWithPopup(auth, new GoogleAuthProvider()).catch(function (err) {
-        var c = err && err.code;
-        msg.textContent = (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') ? ''
-          : c === 'auth/popup-blocked' ? 'El navegador bloqueó la ventana de Google. Permítela e intenta otra vez.'
-          : c === 'auth/unauthorized-domain' ? 'Esta dirección no está autorizada en Firebase (Authentication > Configuración > Dominios autorizados).'
-          : c === 'auth/operation-not-allowed' ? 'Falta activar Google en Firebase.'
-          : c === 'auth/network-request-failed' ? 'No hay conexión. Revisa tu internet.'
-          : 'No se pudo entrar con Google. Código: ' + (c || 'desconocido');
-      }).then(function () { btn.disabled = false; });
-    });
-    $('#btn-out').addEventListener('click', function () { signOut(auth); });
+  function loadData() {
+    unsubs.forEach(function (fn) { fn(); });
+    unsubs = [];
 
-    onAuthStateChanged(auth, function (user) {
-      stopData();
-      if (user) { showLogin(false); startData(user); } else { showLogin(true); }
+    var cols = ['events', 'watch', 'plans', 'todos', 'memories', 'countdowns', 'polls', 'letters'];
+    cols.forEach(function (col) {
+      var unsub = onSnapshot(collection(db, col), function (snap) {
+        S[col] = snap.docs.map(function (d) {
+          var data = d.data();
+          data.id = d.id;
+          return data;
+        });
+        S.loaded[col] = true;
+        renderAll();
+      }, function () {
+        S.loaded[col] = true;
+        renderAll();
+      });
+      unsubs.push(unsub);
     });
+
+    var unsubSettings = onSnapshot(doc(db, 'settings', 'config'), function (d) {
+      if (d.exists()) {
+        var data = d.data();
+        if (data.nameA) S.settings.nameA = data.nameA;
+        if (data.nameB) S.settings.nameB = data.nameB;
+        buildWho();
+        renderAll();
+      }
+    }, function () {});
+    unsubs.push(unsubSettings);
   }
-  boot();
 })();
