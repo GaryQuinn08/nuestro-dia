@@ -303,60 +303,96 @@ const firebaseConfig = {
     }
   }
 
+  /* ============================================================
+     BÚSQUEDA RÁPIDA (progresiva + cancelable + caché + timeout)
+     ============================================================ */
   var searchTimer = null;
+  var searchCache = {};
+  var activeSearch = null;
 
-  function fetchAllMatches(query) {
-    if (!query || query.length < 2) return Promise.resolve([]);
-    var cleanQ = encodeURIComponent(query.trim());
+  function mapAnime(d) {
+    return (d.data || []).map(function (a) {
+      var plats = [];
+      (a.streaming || []).forEach(function (s) { if (s.name) plats.push(s.name); });
+      if (!plats.length) plats.push('Crunchyroll');
+      return {
+        title: a.title_english || a.title,
+        kind: 'anime',
+        img: (a.images && a.images.jpg && a.images.jpg.image_url) || '',
+        plats: plats
+      };
+    });
+  }
 
-    var pAnime = fetch('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=4')
-      .then(function (r) { return r.ok ? r.json() : { data: [] }; })
-      .then(function (d) {
-        return (d.data || []).map(function (a) {
-          var plats = [];
-          if (a.streaming) {
-            a.streaming.forEach(function (s) { if (s.name) plats.push(s.name); });
-          }
-          if (!plats.length) plats.push('Crunchyroll');
-          return {
-            title: a.title_english || a.title,
-            kind: 'anime',
-            malId: a.mal_id,
-            img: (a.images && a.images.jpg && a.images.jpg.image_url) || '',
-            plats: plats
-          };
-        });
-      }).catch(function () { return []; });
+  function mapSeries(d) {
+    return (Array.isArray(d) ? d.slice(0, 4) : []).map(function (s) {
+      var sh = s.show || {};
+      var plats = [];
+      if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
+      if (sh.network && sh.network.name) plats.push(sh.network.name);
+      var isAnime = (sh.type === 'Animation' && sh.language === 'Japanese');
+      return {
+        title: sh.name,
+        kind: isAnime ? 'anime' : 'serie',
+        img: (sh.image && sh.image.medium) || '',
+        plats: plats
+      };
+    });
+  }
 
-    var pSeries = fetch('https://api.tvmaze.com/search/shows?q=' + cleanQ)
-      .then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (d) {
-        return (Array.isArray(d) ? d.slice(0, 4) : []).map(function (s) {
-          var sh = s.show || {};
-          var plats = [];
-          if (sh.webChannel && sh.webChannel.name) plats.push(sh.webChannel.name);
-          if (sh.network && sh.network.name) plats.push(sh.network.name);
-          var isAnime = (sh.type === 'Animation' && sh.language === 'Japanese');
-          return {
-            title: sh.name,
-            kind: isAnime ? 'anime' : 'serie',
-            img: (sh.image && sh.image.medium) || '',
-            plats: plats
-          };
-        });
-      }).catch(function () { return []; });
+  // Búsqueda progresiva: llama onPartial cada vez que llega una API.
+  // Devuelve un handle con abort().
+  function searchProgressive(query, onPartial, kindHint) {
+    var q = (query || '').trim();
+    var key = q.toLowerCase() + '|' + (kindHint || 'auto');
+    var ctrl = new AbortController();
+    var handle = { dead: false, abort: function () { handle.dead = true; ctrl.abort(); } };
 
-    return Promise.all([pAnime, pSeries]).then(function (results) {
-      var combined = [].concat(results[0], results[1]);
-      if (!combined.length) {
-        combined.push({
-          title: query.trim(),
-          kind: 'serie',
-          img: '',
-          plats: []
-        });
+    if (q.length < 2) { onPartial([], true); return handle; }
+    if (searchCache[key]) { onPartial(searchCache[key], true); return handle; }
+
+    var timer = setTimeout(function () { ctrl.abort(); }, 4000);
+    var cleanQ = encodeURIComponent(q);
+    var all = [], seen = {};
+    var useAnime = kindHint !== 'serie' && kindHint !== 'pelicula' && kindHint !== 'juego';
+    var useSeries = kindHint !== 'anime' && kindHint !== 'juego';
+    var pending = (useAnime ? 1 : 0) + (useSeries ? 1 : 0);
+
+    function finishOne(items) {
+      if (handle.dead) return;
+      items.forEach(function (it) {
+        var k = (it.title || '').toLowerCase();
+        if (!k || seen[k]) return;
+        seen[k] = true;
+        all.push(it);
+      });
+      pending--;
+      var done = pending === 0;
+      if (done) {
+        clearTimeout(timer);
+        if (!all.length) all.push({ title: q, kind: 'serie', img: '', plats: [] });
+        searchCache[key] = all.slice();
       }
-      return combined;
+      onPartial(all.slice(), done);
+    }
+
+    function go(url, mapper) {
+      fetch(url, { signal: ctrl.signal })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { finishOne(d ? mapper(d) : []); })
+        .catch(function () { finishOne([]); });
+    }
+
+    if (useSeries) go('https://api.tvmaze.com/search/shows?q=' + cleanQ, mapSeries);
+    if (useAnime) go('https://api.jikan.moe/v4/anime?q=' + cleanQ + '&limit=4', mapAnime);
+    if (!pending) onPartial([], true);
+    return handle;
+  }
+
+  // Versión en promesa (la usa el botón "Buscar coincidencias")
+  function fetchAllMatches(query) {
+    return new Promise(function (resolve) {
+      searchProgressive(query, function (items, done) { if (done) resolve(items); });
     });
   }
 
@@ -364,55 +400,53 @@ const firebaseConfig = {
     var input = $('#w-title');
     var dropdown = $('#autocomplete-list');
 
+    function pickItem(it) {
+      input.value = it.title;
+      $('#w-kind').value = it.kind;
+      $('#w-cover').value = it.img;
+      if (it.plats.length) $('#w-plat').value = it.plats[0];
+      setDetectedPlatforms(it.plats, it.title);
+      dropdown.hidden = true;
+      toast('¡Seleccionado con éxito!');
+    }
+
+    function renderDropdown(items, done) {
+      dropdown.replaceChildren();
+      if (!items.length && done) { dropdown.hidden = true; return; }
+      dropdown.hidden = false;
+      items.forEach(function (it) {
+        dropdown.append(h('button', {
+          type: 'button', class: 'auto-item',
+          onclick: function () { pickItem(it); }
+        },
+          it.img ? h('img', { src: it.img, alt: it.title }) : null,
+          h('div', { class: 'auto-info' },
+            h('span', { class: 'auto-title', text: it.title }),
+            h('span', { class: 'auto-sub', text: (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '') })
+          )
+        ));
+      });
+      if (!done) {
+        dropdown.append(h('div', { class: 'auto-sub', style: 'padding:8px 12px', text: 'Buscando más…' }));
+      }
+    }
+
     input.addEventListener('input', function () {
       var val = this.value.trim();
       clearTimeout(searchTimer);
-      if (val.length < 2) {
-        dropdown.hidden = true;
-        return;
-      }
+      if (activeSearch) activeSearch.abort();
+      if (val.length < 2) { dropdown.hidden = true; return; }
       searchTimer = setTimeout(function () {
-        fetchAllMatches(val).then(function (items) {
-          dropdown.replaceChildren();
-          if (!items.length) {
-            dropdown.hidden = true;
-            return;
-          }
-          dropdown.hidden = false;
-          items.forEach(function (it) {
-            dropdown.append(h('button', {
-              type: 'button', class: 'auto-item',
-              onclick: function () {
-                input.value = it.title;
-                $('#w-kind').value = it.kind;
-                $('#w-cover').value = it.img;
-                if (it.plats.length) {
-                  $('#w-plat').value = it.plats[0];
-                  setDetectedPlatforms(it.plats, it.title);
-                } else {
-                  setDetectedPlatforms([], it.title);
-                }
-                dropdown.hidden = true;
-                toast('¡Seleccionado con éxito!');
-              }
-            },
-              it.img ? h('img', { src: it.img, alt: it.title }) : null,
-              h('div', { class: 'auto-info' },
-                h('span', { class: 'auto-title', text: it.title }),
-                h('span', { class: 'auto-sub', text: (KINDS[it.kind] || 'Título') + (it.plats.length ? ' · ' + it.plats[0] : '') })
-              )
-            ));
-          });
-        });
-      }, 350);
+        var kind = $('#w-kind').value;
+        activeSearch = searchProgressive(val, renderDropdown, kind === 'auto' ? null : kind);
+      }, 220);
     });
 
     document.addEventListener('click', function (e) {
-      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.hidden = true;
-      }
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.hidden = true;
     });
   }
+  /* ============== FIN BÚSQUEDA RÁPIDA ============== */
 
   function searchCoverAPI() {
     var q = $('#w-title').value.trim();
