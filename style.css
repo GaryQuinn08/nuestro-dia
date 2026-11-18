@@ -44,15 +44,18 @@ h1{font:400 clamp(2.2rem,8vw,3.2rem)/1.02 var(--display);letter-spacing:-.01em}
 h2{font:400 1.7rem/1.1 var(--display)}
 .lead{color:var(--ink-2);margin-top:4px;font-size:.92rem}
 
-.form{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-block:16px 6px}
+.form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-block:16px 6px}
 .f{flex:1 1 170px;min-width:0}
-.f-sm{flex:0 1 130px;min-width:0}
+.f-sm{flex:0 1 150px;min-width:0}
 .f-wide{flex:1 1 100%;min-width:0}
 input,select,textarea{width:100%;min-width:0;padding:.7rem .85rem;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);color:var(--ink);font:inherit}
 input[type="file"]{padding:.52rem .75rem;font-size:.86rem}
 input::placeholder,textarea::placeholder{color:var(--ink-3)}
 textarea{resize:vertical;min-height:4.4rem}
 label.cap{display:block;margin-bottom:4px;font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.f-sm label.cap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.form input:not([type="file"]),.form select{height:2.9rem}
+.form .btn{min-height:2.9rem}
 .btn{flex:0 0 auto;padding:.7rem 1.15rem;background:var(--rose);color:var(--rose-ink);border:0;border-radius:var(--r);font:600 .92rem var(--body);cursor:pointer}
 .btn:hover{filter:brightness(1.08)}
 .btn:disabled{opacity:.5;cursor:default}
@@ -232,7 +235,7 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
   right: 0;
   z-index: 50;
   margin-top: 4px;
-  max-height: 280px;
+  max-height: min(60vh, 380px);
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--line-2);
@@ -252,15 +255,33 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
   cursor: pointer;
   text-align: left;
 }
-.auto-item:hover {
+.auto-item:hover,
+.auto-item.active {
   background: var(--rose-a);
 }
-.auto-item img {
-  width: 36px;
-  height: 50px;
+.auto-item img,
+.auto-ph {
+  flex-shrink: 0;
+  width: 38px;
+  height: 54px;
   object-fit: cover;
   border-radius: 4px;
   background: var(--line);
+}
+.auto-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .58rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.auto-note {
+  padding: 10px 12px;
+  color: var(--ink-3);
+  font-size: .82rem;
+  font-style: italic;
 }
 .auto-info {
   display: flex;
