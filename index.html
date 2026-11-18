@@ -77,8 +77,8 @@
       <p class="lead">Series, animes, películas y juegos con puntuación individual y promedio de pareja.</p>
       <form class="form" id="f-watch" autocomplete="off">
         <div class="f input-wrapper">
-          <label class="cap" for="w-title">Título (escribe para autocompletar)</label>
-          <input id="w-title" type="text" required maxlength="80" placeholder="Ej. D.Gray-man, Chainsaw Man…">
+          <label class="cap" for="w-title">Buscar título (español, inglés o romaji)</label>
+          <input id="w-title" type="text" required maxlength="80" placeholder="Ej. Koi to Uso, Chainsaw Man, Zelda…" autocomplete="off">
           <div id="autocomplete-list" class="autocomplete-dropdown" hidden></div>
         </div>
         <div class="f-sm"><label class="cap" for="w-kind">Categoría</label>
@@ -97,17 +97,9 @@
           <label class="cap">Disponible / Detectado en (toca para elegir o abrir web en español):</label>
           <div class="chips" id="detected-plats"></div>
         </div>
-        <div class="f-wide"><label class="cap" for="w-cover">Portada (URL opcional o usa Buscar Info)</label><input id="w-cover" type="url" maxlength="400" placeholder="https://…"></div>
+        <input id="w-cover" type="hidden">
         <button class="btn" type="submit">Agregar al catálogo</button>
-        <button class="btn ghost" type="button" id="btn-search-api">Buscar coincidencias</button>
       </form>
-      <div class="api-box" id="api-box" hidden>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="pick-k" id="api-status">Buscando…</span>
-          <button type="button" class="icon-btn" id="api-close">✕</button>
-        </div>
-        <div class="api-results" id="api-results"></div>
-      </div>
 
       <div class="chips filters" id="w-kind-filters" role="group" aria-label="Filtrar por tipo"></div>
       <div class="chips filters" id="w-filters" role="group" aria-label="Filtrar por estado"></div>
