@@ -255,11 +255,9 @@ const firebaseConfig = {
   /* ============================================================
      BÚSQUEDA (rápida, progresiva, con detección de categoría)
      ------------------------------------------------------------
-     Una sola barra para todo. Busca por título en español, inglés
-     o romaji (ej. "Koi to Uso" = "Love and Lies").
      Fuentes sin llave (funcionan tal cual):
-       Anime        -> AniList (romaji, inglés, nativo y sinónimos)
-       Serie        -> TVMaze + iTunes (tienda MX, títulos en español)
+       Anime        -> AniList
+       Serie        -> TVMaze
        Película     -> iTunes (tienda MX, títulos en español)
        Videojuego   -> CheapShark (PC)
      Opcional: pega una llave gratuita de RAWG para mejores
@@ -279,7 +277,7 @@ const firebaseConfig = {
 
   function norm(s) {
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\p{L}\p{N}\p{M}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   }
   function httpsUrl(u) { return u ? String(u).replace(/^http:\/\//i, 'https://') : ''; }
   function yearOf(s) { var m = /^(\d{4})/.exec(s || ''); return m ? m[1] : ''; }
@@ -289,8 +287,8 @@ const firebaseConfig = {
 
   /* ---------- Fuentes ---------- */
   function srcAnime(q, signal) {
-    var gql = 'query($s:String){Page(perPage:5){media(search:$s,type:ANIME,sort:SEARCH_MATCH){' +
-      'seasonYear synonyms title{romaji english native} coverImage{large} externalLinks{site type}}}}';
+    var gql = 'query($s:String){Page(perPage:4){media(search:$s,type:ANIME,sort:SEARCH_MATCH){' +
+      'format seasonYear title{romaji english} coverImage{large} externalLinks{site type}}}}';
     return getJson('https://graphql.anilist.co', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -299,20 +297,14 @@ const firebaseConfig = {
     }).then(function (d) {
       if (!d || !d.data || !d.data.Page) return null;
       return (d.data.Page.media || []).map(function (m) {
-        var t = m.title || {};
         var plats = (m.externalLinks || []).filter(function (l) { return l.type === 'STREAMING' && l.site; })
           .map(function (l) { return l.site; });
-        var title = t.english || t.romaji || '';
-        var alts = [t.romaji, t.english, t.native].concat(m.synonyms || []).filter(function (x) { return x && x !== title; });
         return {
-          title: title,
-          aka: t.romaji && t.romaji !== title ? t.romaji : '',
-          alts: alts,
+          title: (m.title && (m.title.english || m.title.romaji)) || '',
           kind: 'anime',
           img: httpsUrl(m.coverImage && m.coverImage.large),
           plats: plats,
-          year: m.seasonYear ? String(m.seasonYear) : '',
-          src: 'anilist'
+          year: m.seasonYear ? String(m.seasonYear) : ''
         };
       });
     });
@@ -333,32 +325,10 @@ const firebaseConfig = {
             kind: isAnime ? 'anime' : 'serie',
             img: httpsUrl(sh.image && (sh.image.medium || sh.image.original)),
             plats: plats,
-            year: yearOf(sh.premiered),
-            src: 'tvmaze'
+            year: yearOf(sh.premiered)
           };
         });
       });
-  }
-
-  // Series en español (tienda MX). Muestra el nombre de la serie, no el de cada temporada.
-  function srcTvItunes(q, signal) {
-    var url = 'https://itunes.apple.com/search?media=tvShow&entity=tvSeason&limit=10&country=MX&term=' + encodeURIComponent(q);
-    return getJson(url, { signal: signal }).then(function (d) {
-      if (!d || !Array.isArray(d.results)) return null;
-      var out = [], seen = {};
-      d.results.forEach(function (r) {
-        var name = r.artistName ||
-          String(r.collectionName || '').replace(/,\s*(temporada|season|parte|part|volumen|vol\.?)\s*\d+.*$/i, '');
-        var k = norm(name);
-        if (!k || seen[k]) return;
-        seen[k] = true;
-        // Descarta resultados que no se parecen a lo escrito.
-        if (matchScore({ title: name }, q) > 2) return;
-        var art = httpsUrl(r.artworkUrl100 || '').replace(/\/\d+x\d+bb\.(jpg|png)/, '/300x450bb.$1');
-        out.push({ title: name, kind: 'serie', img: art, plats: [], year: yearOf(r.releaseDate), src: 'itunes-tv' });
-      });
-      return out.slice(0, 3);
-    });
   }
 
   function srcMovies(q, signal) {
@@ -367,7 +337,7 @@ const firebaseConfig = {
       if (!d || !Array.isArray(d.results)) return null;
       return d.results.map(function (m) {
         var art = httpsUrl(m.artworkUrl100 || '').replace(/\/\d+x\d+bb\.(jpg|png)/, '/300x450bb.$1');
-        return { title: m.trackName || '', kind: 'pelicula', img: art, plats: [], year: yearOf(m.releaseDate), src: 'itunes-movie' };
+        return { title: m.trackName || '', kind: 'pelicula', img: art, plats: [], year: yearOf(m.releaseDate) };
       });
     });
   }
@@ -393,29 +363,16 @@ const firebaseConfig = {
       });
   }
 
-  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies], juego: [srcGames] };
+  var SOURCES = { anime: srcAnime, serie: srcSeries, pelicula: srcMovies, juego: srcGames };
 
-  /* ---------- Relevancia ----------
-     0 = igual, 1 = empieza con, 2 = contiene (o tiene todas las palabras), 3 = otro.
-     Mira el título y todos sus nombres alternos (romaji, inglés, sinónimos). */
-  function matchScore(it, q) {
-    var qq = norm(q), toks = qq.split(' '), best = 3;
-    if (!qq) return best;
-    [it.title].concat(it.alts || []).forEach(function (t) {
-      var n = norm(t);
-      if (!n) return;
-      var sc = n === qq ? 0 : n.indexOf(qq) === 0 ? 1
-        : (n.indexOf(qq) !== -1 || toks.every(function (w) { return n.indexOf(w) !== -1; })) ? 2 : 3;
-      if (sc < best) best = sc;
-    });
-    return best;
-  }
+  /* ---------- Orden por relevancia ---------- */
   function rank(items, q) {
-    // Misma relevancia: gana el título más corto (más parecido a lo escrito); luego, el que llegó primero.
-    return items.map(function (it, i) { return { it: it, score: matchScore(it, q), len: String(it.title || '').length, i: i }; })
-      .sort(function (a, b) {
-        return a.score - b.score || (a.score < 3 ? a.len - b.len : 0) || a.i - b.i;
-      })
+    var qq = norm(q);
+    return items.map(function (it, i) {
+      var n = norm(it.title);
+      var score = n === qq ? 0 : n.indexOf(qq) === 0 ? 1 : n.indexOf(qq) !== -1 ? 2 : 3;
+      return { it: it, score: score, i: i };
+    }).sort(function (a, b) { return a.score - b.score || a.i - b.i; })
       .map(function (x) { return x.it; });
   }
 
@@ -431,29 +388,17 @@ const firebaseConfig = {
     if (q.length < 2) { onPartial([], true); return handle; }
     if (searchCache[key]) { onPartial(searchCache[key], true); return handle; }
 
-    var kinds = kindHint && SOURCES[kindHint] ? [kindHint] : Object.keys(SOURCES);
-    var jobs = [];
-    kinds.forEach(function (k) { SOURCES[k].forEach(function (fn) { jobs.push(fn); }); });
-    // Si AniList está activo, ignora los animes que TVMaze marca (AniList los trae mejor).
-    var dropTvAnime = kinds.indexOf('anime') !== -1;
-    var pending = jobs.length, all = [], seen = {}, failed = false;
+    var names = kindHint && SOURCES[kindHint] ? [kindHint] : Object.keys(SOURCES);
+    var pending = names.length, all = [], seen = {}, failed = false;
     var timer = setTimeout(function () { ctrl.abort(); }, SEARCH_TIMEOUT);
 
     function finishOne(items, ok) {
       if (handle.dead) return;
       if (!ok) failed = true;
       (items || []).forEach(function (it) {
-        if (dropTvAnime && it.src === 'tvmaze' && it.kind === 'anime') return;
         var k = norm(it.title) + '|' + it.kind;
-        if (!norm(it.title)) return;
-        if (seen[k] !== undefined) {           // repetido: completa lo que falte
-          var cur = all[seen[k]];
-          if (!cur.img && it.img) cur.img = it.img;
-          if (!cur.year && it.year) cur.year = it.year;
-          if (!(cur.plats && cur.plats.length) && it.plats) cur.plats = it.plats;
-          return;
-        }
-        seen[k] = all.length;
+        if (!norm(it.title) || seen[k]) return;
+        seen[k] = true;
         all.push(it);
       });
       pending--;
@@ -466,9 +411,9 @@ const firebaseConfig = {
       onPartial(sorted, done);
     }
 
-    jobs.forEach(function (fn) {
+    names.forEach(function (n) {
       var p;
-      try { p = fn(q, ctrl.signal); } catch (e) { p = Promise.reject(e); }
+      try { p = SOURCES[n](q, ctrl.signal); } catch (e) { p = Promise.reject(e); }
       p.then(
         function (items) { finishOne(items || [], items !== null && items !== undefined); },
         function () { finishOne([], false); }
@@ -545,7 +490,7 @@ const firebaseConfig = {
     $('#w-kind').value = it.kind;
     kindAuto = true;
     $('#w-cover').value = it.img || '';
-    $('#w-plat').value = (it.plats && it.plats[0]) || '';
+    if (it.plats && it.plats.length) $('#w-plat').value = it.plats[0];
     setDetectedPlatforms(it.plats, it.title, it.kind);
     toast('Detectado como ' + (KINDS[it.kind] || it.kind));
   }
@@ -590,7 +535,6 @@ const firebaseConfig = {
           thumb,
           h('div', { class: 'auto-info' },
             h('span', { class: 'auto-title', text: it.title }),
-            it.aka ? h('span', { class: 'auto-aka', text: it.aka }) : null,
             h('span', { class: 'auto-sub', text: itemSub(it) })
           )
         ));
@@ -604,7 +548,6 @@ const firebaseConfig = {
       if (activeSearch) activeSearch.abort();
       // Si la categoría la había puesto la detección, vuelve a automático para el nuevo título.
       if (kindAuto) { kindSel.value = 'auto'; kindAuto = false; }
-      $('#w-cover').value = '';     // la portada guardada era del título anterior
       if (val.length < 2) { dropdown.hidden = true; return; }
       searchTimer = setTimeout(function () {
         var kind = kindSel.value === 'auto' ? null : kindSel.value;
@@ -630,6 +573,35 @@ const firebaseConfig = {
     });
   }
 
+  /* ---------- Botón "Buscar coincidencias" ---------- */
+  function searchCoverAPI() {
+    var q = $('#w-title').value.trim();
+    if (!q) { toast('Escribe primero el título para buscar.'); $('#w-title').focus(); return; }
+    var box = $('#api-box'), res = $('#api-results'), st = $('#api-status');
+    var kindVal = $('#w-kind').value;
+    box.hidden = false;
+    res.replaceChildren();
+    st.textContent = 'Buscando coincidencias…';
+
+    fetchAllMatches(q, kindVal === 'auto' ? null : kindVal).then(function (items) {
+      if (!items.length) {
+        st.textContent = 'Sin coincidencias. Puedes elegir categoría y plataforma manualmente.';
+        setDetectedPlatforms([], q, kindVal === 'auto' ? null : kindVal);
+        return;
+      }
+      st.textContent = 'Selecciona el resultado correcto:';
+      items.slice(0, 12).forEach(function (it) {
+        res.append(h('button', {
+          type: 'button', class: 'api-item',
+          onclick: function () { applyPick(it); box.hidden = true; }
+        },
+          it.img ? h('img', { src: it.img, alt: it.title }) : null,
+          h('span', { text: it.title }),
+          h('span', { style: 'font-size:.7rem;color:var(--rose)', text: itemSub(it) })
+        ));
+      });
+    });
+  }
   /* ============== FIN BÚSQUEDA ============== */
 
   function calcMetacritic(w) {
@@ -1135,34 +1107,31 @@ const firebaseConfig = {
       if (!title) return;
       var btn = $('#f-watch button[type="submit"]');
 
-      // Si no elegiste una sugerencia, se busca el título y se toma lo del mejor resultado:
-      // categoría, portada y, si coincide exacto con algún nombre (romaji, inglés, español),
-      // el título oficial.
-      var prep = Promise.resolve({ title: title, kind: kindVal === 'auto' ? 'serie' : kindVal, cover: cover, platform: platform });
-      if (kindVal === 'auto' || !cover) {
+      // Si la categoría está en "Detectar auto" y no elegiste una sugerencia,
+      // se busca el título y se toma la categoría del mejor resultado.
+      var prep = Promise.resolve({ kind: kindVal, cover: cover, platform: platform });
+      if (kindVal === 'auto') {
         btn.disabled = true;
-        prep = fetchAllMatches(title, kindVal === 'auto' ? null : kindVal).then(function (items) {
-          var best = items[0], sc = best ? matchScore(best, title) : 3;
-          var kind = kindVal === 'auto' ? (best && sc <= 2 ? best.kind : 'serie') : kindVal;
-          if (best && sc === 0) {
-            return {
-              title: best.title, kind: kind,
-              cover: cover || best.img || '',
-              platform: platform || (best.plats && best.plats[0]) || ''
-            };
-          }
-          return { title: title, kind: kind, cover: cover, platform: platform };
+        prep = fetchAllMatches(title).then(function (items) {
+          var n = norm(title);
+          var best = items.filter(function (x) { return norm(x.title) === n; })[0] || items[0];
+          if (!best) return { kind: 'serie', cover: cover, platform: platform };
+          return {
+            kind: best.kind,
+            cover: cover || best.img || '',
+            platform: platform || (best.plats && best.plats[0]) || ''
+          };
         });
       }
 
       prep.then(function (info) {
         return run(function () {
           return add('watch', {
-            title: info.title, kind: info.kind, cover: info.cover, platform: info.platform,
+            title: title, kind: info.kind, cover: info.cover, platform: info.platform,
             status: 'por-ver', season: 1, ep: 0, rating: 0,
             scoreA: null, scoreB: null, revA: '', revB: ''
           });
-        }).then(function (ok) { return { ok: ok, kind: info.kind, title: info.title }; });
+        }).then(function (ok) { return { ok: ok, kind: info.kind }; });
       }).then(function (res) {
         btn.disabled = false;
         if (res.ok) {
@@ -1171,13 +1140,16 @@ const firebaseConfig = {
           $('#w-plat').value = '';
           $('#w-kind').value = 'auto';
           kindAuto = false;
+          $('#api-box').hidden = true;
           $('#detected-plats-box').hidden = true;
           $('#autocomplete-list').hidden = true;
-          toast('¡' + res.title + ' agregado como ' + (KINDS[res.kind] || 'serie').toLowerCase() + '!');
+          toast('¡Agregado al catálogo como ' + (KINDS[res.kind] || 'serie').toLowerCase() + '!');
         }
       });
     });
 
+    $('#api-close').addEventListener('click', function () { $('#api-box').hidden = true; });
+    $('#btn-search-api').addEventListener('click', searchCoverAPI);
     $('#btn-pick').addEventListener('click', pickRandom);
 
     $('#pick-go').addEventListener('click', function () {
