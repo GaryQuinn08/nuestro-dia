@@ -122,7 +122,93 @@ const firebaseConfig = {
       return false;
     });
   }
-  function add(col, data) { data.createdAt = Date.now(); return addDoc(collection(db, col), data); }
+  function add(col, data) { data.createdAt = Date.now(); data.by = S.me; return addDoc(collection(db, col), data); }
+
+  /* ---------- Notificaciones (Firebase Cloud Messaging) ---------- */
+  // Clave pública Web Push (Firebase → Configuración → Cloud Messaging → Certificados push web).
+  // Mientras esté vacía, la sección de avisos no aparece.
+  var VAPID_KEY = '';
+  var FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+
+  function pushSupported() {
+    return !!VAPID_KEY && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+  }
+  function saveDevice(token) {
+    token = token || localStorage.getItem('nd-push-token');
+    if (!db || !token || !S.uid) return Promise.resolve();
+    return setDoc(doc(db, 'settings', 'device-' + token), {
+      kind: 'device', token: token, me: S.me, uid: S.uid, updatedAt: Date.now()
+    }, { merge: true });
+  }
+  function enablePush() {
+    return Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') throw new Error('denied');
+      return Promise.all([import(FIREBASE_SDK + 'firebase-messaging.js'), navigator.serviceWorker.ready]);
+    }).then(function (r) {
+      var m = r[0];
+      return m.getToken(m.getMessaging(), { vapidKey: VAPID_KEY, serviceWorkerRegistration: r[1] });
+    }).then(function (token) {
+      if (!token) throw new Error('notoken');
+      try { localStorage.setItem('nd-push-token', token); } catch (e) {}
+      return saveDevice(token);
+    });
+  }
+  function setupNotifications() {
+    var box = $('#notif-box');
+    if (!box) return;
+    var txt = $('#notif-txt'), btn = $('#btn-notif');
+    if (!VAPID_KEY) { box.hidden = true; return; }
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    box.hidden = false;
+    if (ios && !standalone) {
+      txt.textContent = 'En iPhone los avisos solo funcionan con la app instalada: Safari → Compartir → Agregar a pantalla de inicio, y actívalos desde ahí.';
+      btn.hidden = true;
+      return;
+    }
+    if (!pushSupported()) {
+      txt.textContent = 'Este navegador no permite avisos.';
+      btn.hidden = true;
+      return;
+    }
+    function paint() {
+      var on = Notification.permission === 'granted' && !!localStorage.getItem('nd-push-token');
+      if (Notification.permission === 'denied') {
+        txt.textContent = 'Los avisos están bloqueados. Actívalos en los ajustes del navegador o de la app.';
+        btn.hidden = true;
+      } else if (on) {
+        txt.textContent = 'Avisos activados en este celular ✓ (te llegan los cambios que haga la otra persona).';
+        btn.hidden = true;
+      } else {
+        txt.textContent = 'Recibe un aviso cuando la otra persona agregue una cartita, pendiente, fecha, plan o algo al catálogo. Primero elige arriba "En este celular soy".';
+        btn.hidden = false;
+      }
+    }
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      enablePush().then(function () { toast('¡Avisos activados!'); }).catch(function (e) {
+        toast(e && e.message === 'denied' ? 'No diste permiso para los avisos.' : 'No se pudieron activar los avisos.');
+      }).then(function () { btn.disabled = false; paint(); });
+    });
+    paint();
+  }
+  function goTo(tab, sub) {
+    var t = $('.tab[data-tab="' + tab + '"]');
+    if (t) t.click();
+    if (sub) { var c = $('.chip[data-sub="' + sub + '"]'); if (c) c.click(); }
+  }
+  function setupDeepLink() {
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get('tab')) goTo(q.get('tab'), q.get('sub'));
+    } catch (e) {}
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (ev) {
+        if (ev.data && ev.data.type === 'nd-goto') goTo(ev.data.tab, ev.data.sub);
+      });
+    }
+  }
+
   function upd(col, id, data) { var p = col + '/' + id; return seq(p, function () { return updateDoc(doc(db, p), data); }); }
   function del(col, id) { var p = col + '/' + id; return seq(p, function () { return deleteDoc(doc(db, p)); }); }
 
@@ -1120,6 +1206,7 @@ const firebaseConfig = {
       var me = $('#who-am-i').value;
       S.me = me;
       try { localStorage.setItem('nd-me', me); } catch (err) {}
+      saveDevice().catch(function () {});
       run(function () {
         return setDoc(doc(db, 'settings', 'config'), { nameA: na, nameB: nb }, { merge: true });
       }).then(function (ok) {
@@ -1371,6 +1458,8 @@ const firebaseConfig = {
 
     setupSoloView();
     setupInstall();
+    setupNotifications();
+    setupDeepLink();
 
     try {
       var app = initializeApp(firebaseConfig);
@@ -1390,6 +1479,7 @@ const firebaseConfig = {
       onAuthStateChanged(auth, function (user) {
         if (user) {
           S.uid = user.uid;
+          saveDevice().catch(function () {});
           $('#login').hidden = true;
           $('#shell').hidden = false;
           $('#btn-names').hidden = false;
