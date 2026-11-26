@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#130f17">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Nuestro Día">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>Nuestro Día</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
   <link rel="stylesheet" href="style.css">
@@ -18,6 +25,7 @@
     </div>
     <button type="button" class="icon-btn" id="btn-names" aria-label="Cambiar los nombres" aria-expanded="false" hidden><span id="ic-pencil"></span></button>
   </header>
+  <a class="solo-back" href="./">← Nuestro Día completo</a>
   <div class="ribbon" id="ribbon" hidden></div>
   <div id="pinned-box" hidden></div>
   <div class="note" id="offline" hidden>Falta pegar la configuración de Firebase en el archivo.</div>
@@ -40,6 +48,12 @@
       <button class="btn" type="submit" style="align-self:flex-end">Guardar</button>
       <button class="btn ghost" type="button" id="btn-out" style="align-self:flex-end">Salir de la cuenta</button>
     </form>
+    <div class="install" id="install-box">
+      <p id="install-txt"></p>
+      <button class="btn ghost" type="button" id="btn-install" hidden>Instalar en este celular</button>
+      <p id="install-short"></p>
+      <p class="install-links">Accesos directos: <a href="?vista=notas">Solo notas</a> · <a href="?vista=fotos">Solo fotos</a></p>
+    </div>
   </section>
 
   <nav class="tabs" role="tablist" aria-label="Secciones">

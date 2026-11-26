@@ -1021,6 +1021,58 @@ const firebaseConfig = {
     });
   }
 
+  /* ---------- Vistas directas (?vista=notas / ?vista=fotos) ---------- */
+  function setupSoloView() {
+    var v = new URLSearchParams(location.search).get('vista');
+    if (v !== 'notas' && v !== 'fotos') return;
+    var titulo = v === 'notas' ? 'Notas' : 'Fotos';
+    document.body.classList.add('solo', 'solo-' + v);
+    document.title = titulo + ' · Nuestro Día';
+    var h1 = $('.top h1'); if (h1) h1.textContent = titulo;
+    var metaTitle = $('meta[name="apple-mobile-web-app-title"]'); if (metaTitle) metaTitle.setAttribute('content', titulo);
+    var touch = $('link[rel="apple-touch-icon"]'); if (touch) touch.setAttribute('href', 'icons/' + v + '-192.png');
+    $('.tab[data-tab="nosotros"]').click();
+    $('.subtabs .chip[data-sub="' + (v === 'notas' ? 'cartas' : 'recuerdos') + '"]').click();
+  }
+
+  /* ---------- Instalar como app ---------- */
+  function setupInstall() {
+    var txt = $('#install-txt'), btn = $('#btn-install'), short = $('#install-short');
+    var deferred = null;
+    var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var android = /android/i.test(navigator.userAgent);
+
+    if (standalone) {
+      txt.hidden = true;
+    } else {
+      txt.textContent = ios
+        ? 'Para instalarla en iPhone: ábrela en Safari, toca Compartir y luego «Agregar a pantalla de inicio».'
+        : 'Instálala como app para abrirla desde la pantalla de inicio, sin la barra del navegador.';
+    }
+    short.textContent = ios
+      ? 'Para un icono aparte de notas o fotos: abre «Solo notas» o «Solo fotos» en Safari y agrégalo a la pantalla de inicio.'
+      : android
+        ? 'Para un icono aparte de notas o fotos: con la app instalada, mantén presionado su icono y arrastra «Notas» o «Fotos» a la pantalla de inicio.'
+        : 'Para un icono aparte de notas o fotos, usa estos accesos directos desde el celular.';
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferred = e;
+      btn.hidden = false;
+    });
+    btn.addEventListener('click', function () {
+      if (!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.then(function () { deferred = null; btn.hidden = true; });
+    });
+    window.addEventListener('appinstalled', function () { btn.hidden = true; toast('¡App instalada!'); });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
   function renderAll() {
     renderRibbon();
     renderHoy();
@@ -1316,6 +1368,9 @@ const firebaseConfig = {
         toast('No se pudo procesar la imagen.');
       });
     });
+
+    setupSoloView();
+    setupInstall();
 
     try {
       var app = initializeApp(firebaseConfig);

@@ -307,3 +307,23 @@ ul.list{list-style:none;margin:8px 0 0;padding:0}
 .input-wrapper {
   position: relative;
 }
+
+/* ---------- Instalar como app ---------- */
+.install{display:grid;gap:10px;justify-items:start;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.install p{margin:0;color:var(--ink-2);font-size:.86rem}
+.install a{color:var(--rose)}
+
+/* ---------- Vistas directas: ?vista=notas y ?vista=fotos ---------- */
+.solo-back{display:none;margin-top:12px;align-items:center;padding:.38rem .8rem;border:1px solid var(--line);border-radius:999px;color:var(--ink-2);font:500 .82rem var(--body);text-decoration:none}
+.solo-back:hover{border-color:var(--line-2);color:var(--ink)}
+body.solo .solo-back{display:inline-flex}
+body.solo{padding-block:20px 48px}
+body.solo .tabs,
+body.solo .ribbon,
+body.solo .subtabs,
+body.solo #tab-nosotros > h2,
+body.solo #tab-nosotros > .lead{display:none!important}
+body.solo .panel{padding-top:6px}
+body.solo-fotos #pinned-box{display:none!important}
+body.solo-fotos #sub-recuerdos:not([hidden]){display:flex;flex-direction:column}
+body.solo-fotos #sub-recuerdos .mem-grid{order:-1;margin-top:16px}
