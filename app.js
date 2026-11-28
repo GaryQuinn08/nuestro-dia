@@ -466,9 +466,9 @@ const firebaseConfig = {
       encodeURIComponent(TMDB_KEY) + '&query=' + encodeURIComponent(q);
     return getJson(url, { signal: signal }).then(function (d) {
       if (!d || !Array.isArray(d.results)) return null;
-      return d.results.slice(0, 6).map(function (m) {
+      return Promise.all(d.results.slice(0, 6).map(function (m) {
         var title = m.title || m.original_title || '';
-        return {
+        var item = {
           title: title,
           aka: m.original_title && m.original_title !== title ? m.original_title : '',
           alts: [m.original_title],
@@ -478,7 +478,15 @@ const firebaseConfig = {
           year: yearOf(m.release_date),
           src: 'tmdb'
         };
-      });
+        // Dónde verla en México (suscripción primero; si no hay, renta o compra).
+        var purl = 'https://api.themoviedb.org/3/movie/' + m.id + '/watch/providers?api_key=' + encodeURIComponent(TMDB_KEY);
+        return getJson(purl, { signal: signal }).then(function (pd) {
+          var mx = pd && pd.results && pd.results.MX;
+          var list = mx ? (mx.flatrate && mx.flatrate.length ? mx.flatrate : (mx.rent || mx.buy || [])) : [];
+          item.plats = list.map(function (x) { return x.provider_name; }).filter(Boolean).slice(0, 4);
+          return item;
+        }).catch(function () { return item; });
+      }));
     });
   }
 
