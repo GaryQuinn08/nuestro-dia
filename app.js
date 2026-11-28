@@ -352,6 +352,8 @@ const firebaseConfig = {
      resultados de videojuegos (https://rawg.io/apidocs).
      ============================================================ */
   var RAWG_KEY = '';
+  // Llave gratis de TMDB (themoviedb.org → Configuración → API). Mejora mucho la búsqueda de películas en español.
+  var TMDB_KEY = '';
   var SEARCH_TIMEOUT = 5000;
   var DEBOUNCE_MS = 180;
   var MAX_SUGGESTIONS = 8;
@@ -458,6 +460,28 @@ const firebaseConfig = {
     });
   }
 
+  function srcMoviesTmdb(q, signal) {
+    if (!TMDB_KEY) return Promise.resolve([]);
+    var url = 'https://api.themoviedb.org/3/search/movie?include_adult=false&language=es-MX&page=1&api_key=' +
+      encodeURIComponent(TMDB_KEY) + '&query=' + encodeURIComponent(q);
+    return getJson(url, { signal: signal }).then(function (d) {
+      if (!d || !Array.isArray(d.results)) return null;
+      return d.results.slice(0, 6).map(function (m) {
+        var title = m.title || m.original_title || '';
+        return {
+          title: title,
+          aka: m.original_title && m.original_title !== title ? m.original_title : '',
+          alts: [m.original_title],
+          kind: 'pelicula',
+          img: m.poster_path ? 'https://image.tmdb.org/t/p/w300' + m.poster_path : '',
+          plats: [],
+          year: yearOf(m.release_date),
+          src: 'tmdb'
+        };
+      });
+    });
+  }
+
   function srcGames(q, signal) {
     if (RAWG_KEY) {
       var url = 'https://api.rawg.io/api/games?page_size=4&search_precise=true&key=' + encodeURIComponent(RAWG_KEY) +
@@ -479,7 +503,7 @@ const firebaseConfig = {
       });
   }
 
-  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies], juego: [srcGames] };
+  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMoviesTmdb, srcMovies], juego: [srcGames] };
 
   /* ---------- Relevancia ----------
      0 = igual, 1 = empieza con, 2 = contiene (o tiene todas las palabras), 3 = otro.
