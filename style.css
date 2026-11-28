@@ -354,3 +354,23 @@ body.solo-fotos #sub-recuerdos .mem-grid{order:-1;margin-top:16px}
 @keyframes wrIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .wr-btn.locked{border-style:dashed;color:var(--ink-3)}
 .wr-actions{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:4;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding:0 16px}
+
+/* ---------- Sagas ---------- */
+.saga-chip{margin-top:6px;padding:.18rem .65rem;border:1px dashed var(--line-2);border-radius:999px;background:none;color:var(--ink-3);font-size:.76rem;cursor:pointer}
+.saga-chip.on{border-style:solid;border-color:var(--rose-deep);color:var(--rose)}
+.saga-edit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.saga-edit input{flex:1 1 150px;min-width:0}
+.saga{list-style:none;border:1px solid var(--rose-deep);border-radius:16px;background:linear-gradient(135deg,rgba(224,154,173,.07),transparent);padding:10px}
+.saga-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:8px}
+.saga-title{display:grid;text-align:left;background:none;border:0;cursor:pointer;color:var(--ink);font:400 1.25rem/1.2 var(--display);padding:4px}
+.saga-title small{font:500 .76rem var(--body);color:var(--ink-3)}
+.saga-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.saga-row{display:flex;gap:8px;align-items:stretch}
+.saga-row>.w{flex:1;min-width:0}
+.saga-side{display:flex;flex-direction:column;align-items:center;gap:4px;width:30px;flex:0 0 30px;padding-top:10px}
+.saga-n{width:24px;height:24px;border-radius:50%;background:var(--rose-a);color:var(--rose);font:600 .76rem/24px var(--body);text-align:center}
+.saga-handle{touch-action:none;cursor:grab;border:0;background:none;color:var(--ink-2);font-size:1.1rem;line-height:1;padding:6px 2px}
+.saga-mv{border:0;background:none;color:var(--ink-3);font-size:.7rem;padding:4px;cursor:pointer}
+.saga-row.dragging{opacity:.75;outline:2px solid var(--rose);border-radius:14px}
+.saga-list.drag .mc-panel,.saga-list.drag .w-controls,.saga-list.drag .saga-edit{display:none}
+.saga-list.drag .w{padding:10px 0;gap:6px;user-select:none}

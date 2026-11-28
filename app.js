@@ -94,7 +94,7 @@ const firebaseConfig = {
     me: savedMe,
     day: todayISO(), tab: 'hoy', sub: 'cartas',
     evCat: 'comida', wf: 'all', wkf: 'all', tf: 'all', yearly: false, pinLetter: true,
-    uid: null, armed: null, pickId: null, ties: {}, editingRev: null
+    sagaEdit: null, sagaOpen: {}, uid: null, armed: null, pickId: null, ties: {}, editingRev: null
   };
   var db = null, auth = null, unsubs = [], armTimer = 0, toastTimer = 0, pickTimer = 0;
 
@@ -805,7 +805,7 @@ const firebaseConfig = {
     ul.replaceChildren();
     if (!list.length) ul.append(emptyMsg('watch', S.watch.length ? 'No hay títulos con estos filtros.' : 'Agrega series, animes, películas o juegos arriba para armar su catálogo.'));
 
-    list.forEach(function (w) {
+    function buildItem(w, tag) {
       var status = w.status || 'por-ver', season = w.season || 1, ep = w.ep || 0;
       var mc = calcMetacritic(w);
       var showProgress = status === 'viendo' && (w.kind === 'serie' || w.kind === 'anime');
@@ -858,12 +858,13 @@ const firebaseConfig = {
         );
       };
 
-      ul.append(h('li', { class: 'w' },
+      return h(tag || 'li', { class: 'w' },
         h('div', { class: 'w-top' },
           w.cover ? h('img', { class: 'w-cover', src: w.cover, alt: w.title }) : h('div', { class: 'w-cover-empty', text: KINDS[w.kind] || 'Título' }),
           h('div', {},
             h('h3', { class: 'w-title', text: w.title }),
             h('p', { class: 'w-meta', text: [KINDS[w.kind] || 'Serie', w.platform].filter(Boolean).join(' · ') }),
+            sagaControl(w),
             h('div', { class: 'w-controls', style: 'margin-top:10px' },
               h('div', { class: 'seg', role: 'group', 'aria-label': 'Estado' }, WSTAT.map(function (s) {
                 return h('button', { type: 'button', class: 'seg-b' + (status === s[0] ? ' on' : ''), 'aria-pressed': String(status === s[0]),
@@ -886,8 +887,159 @@ const firebaseConfig = {
           ),
           h('div', { class: 'mc-reviews' }, revCard('a'), revCard('b'))
         )
-      ));
+      );
+    }
+
+    var sagas = {}, placed = {};
+    S.watch.forEach(function (w) { if (w.saga) (sagas[w.saga] = sagas[w.saga] || []).push(w); });
+    list.forEach(function (w) {
+      if (!w.saga) { ul.append(buildItem(w)); return; }
+      if (placed[w.saga]) return;
+      placed[w.saga] = true;
+      ul.append(buildSaga(w.saga, sagas[w.saga], buildItem));
     });
+  }
+
+  /* ---------- Sagas: agrupar y ordenar (por cola o arrastrando) ---------- */
+  function sagaMode(name) { return (S.settings.sagaModes && S.settings.sagaModes[name]) || 'cola'; }
+  function sagaOrder(members, mode) {
+    var at = function (w) { return w.sagaAt || w.createdAt || 0; };
+    return members.slice().sort(function (a, b) {
+      if (mode === 'manual') {
+        var pa = typeof a.sagaPos === 'number' ? a.sagaPos : 1e9, pb = typeof b.sagaPos === 'number' ? b.sagaPos : 1e9;
+        if (pa !== pb) return pa - pb;
+      }
+      return at(a) - at(b);
+    });
+  }
+  function sagaNames() {
+    var seen = {};
+    S.watch.forEach(function (w) { if (w.saga) seen[w.saga] = 1; });
+    return Object.keys(seen).sort();
+  }
+  function sagaControl(w) {
+    var editing = S.sagaEdit === w.id;
+    var chip = h('button', {
+      type: 'button', class: 'saga-chip' + (w.saga ? ' on' : ''),
+      onclick: function () { S.sagaEdit = editing ? null : w.id; renderWatch(); }
+    }, w.saga ? '📚 ' + w.saga : '＋ Saga');
+    if (!editing) return chip;
+    var inp = h('input', { type: 'text', maxlength: '60', placeholder: 'Nombre de la saga', value: w.saga || '', list: 'saga-names' });
+    var dl = h('datalist', { id: 'saga-names' }, sagaNames().map(function (n) { return h('option', { value: n }); }));
+    return h('div', {},
+      chip,
+      h('div', { class: 'saga-edit' }, inp, dl,
+        h('button', { type: 'button', class: 'btn sm', onclick: function () {
+          var name = inp.value.trim();
+          S.sagaEdit = null;
+          if (!name) { renderWatch(); return; }
+          if (name === w.saga) { renderWatch(); return; }
+          var mates = S.watch.filter(function (x) { return x.saga === name; });
+          var maxPos = mates.reduce(function (m, x) { return Math.max(m, typeof x.sagaPos === 'number' ? x.sagaPos : -1); }, -1);
+          run(function () { return upd('watch', w.id, { saga: name, sagaAt: Date.now(), sagaPos: Math.max(maxPos, mates.length - 1) + 1 }); });
+        } }, 'Guardar'),
+        w.saga ? h('button', { type: 'button', class: 'btn ghost sm', onclick: function () {
+          S.sagaEdit = null;
+          run(function () { return upd('watch', w.id, { saga: '', sagaAt: null, sagaPos: null }); });
+        } }, 'Quitar de la saga') : null,
+        h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { S.sagaEdit = null; renderWatch(); } }, 'Cancelar')
+      )
+    );
+  }
+  function setSagaMode(name, mode) {
+    S.settings.sagaModes = S.settings.sagaModes || {};
+    S.settings.sagaModes[name] = mode;
+    renderWatch();
+    var patch = { sagaModes: {} };
+    patch.sagaModes[name] = mode;
+    run(function () { return setDoc(doc(db, 'settings', 'config'), patch, { merge: true }); });
+  }
+  function saveSagaOrder(ids) {
+    run(function () {
+      return Promise.all(ids.map(function (id, i) { return upd('watch', id, { sagaPos: i }); }));
+    });
+  }
+  function buildSaga(name, members, buildItem) {
+    var mode = sagaMode(name);
+    var ordered = sagaOrder(members, mode);
+    var open = S.sagaOpen[name] !== false;
+    var done = members.filter(function (w) { return w.status === 'terminado'; }).length;
+    var rows = h('ol', { class: 'saga-list' });
+
+    ordered.forEach(function (w, i) {
+      var row = h('li', { class: 'saga-row', dataset: { id: w.id } });
+      var side = h('div', { class: 'saga-side' }, h('span', { class: 'saga-n', text: String(i + 1) }));
+      if (mode === 'manual') {
+        var handle = h('button', { type: 'button', class: 'saga-handle', 'aria-label': 'Arrastrar para reordenar', title: 'Arrastra' }, '⋮⋮');
+        handle.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          row.classList.add('dragging');
+          rows.classList.add('drag');
+          var lastY = e.clientY, raf = 0;
+          var place = function () {
+            var sibs = Array.prototype.slice.call(rows.children).filter(function (x) { return x !== row; });
+            var before = null;
+            for (var k = 0; k < sibs.length; k++) {
+              var r = sibs[k].getBoundingClientRect();
+              if (lastY < r.top + r.height / 2) { before = sibs[k]; break; }
+            }
+            if (before) { if (row.nextSibling !== before) rows.insertBefore(row, before); }
+            else if (rows.lastChild !== row) rows.append(row);
+          };
+          // Si el dedo llega al borde de la pantalla, se desplaza sola.
+          var tick = function () {
+            var vh = window.innerHeight, edge = 90;
+            if (lastY < edge) window.scrollBy(0, -Math.ceil((edge - lastY) / 6));
+            else if (lastY > vh - edge) window.scrollBy(0, Math.ceil((lastY - (vh - edge)) / 6));
+            place();
+            raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+          var move = function (ev) { lastY = ev.clientY; place(); };
+          var up = function () {
+            cancelAnimationFrame(raf);
+            rows.classList.remove('drag');
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', up);
+            row.classList.remove('dragging');
+            saveSagaOrder(Array.prototype.slice.call(rows.children).map(function (x) { return x.dataset.id; }));
+          };
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+          window.addEventListener('pointercancel', up);
+        });
+        var step = function (d) {
+          return function () {
+            var ids = ordered.map(function (x) { return x.id; });
+            var j = i + d;
+            if (j < 0 || j >= ids.length) return;
+            var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+            saveSagaOrder(ids);
+          };
+        };
+        side.append(handle,
+          h('button', { type: 'button', class: 'saga-mv', 'aria-label': 'Subir', onclick: step(-1) }, '▲'),
+          h('button', { type: 'button', class: 'saga-mv', 'aria-label': 'Bajar', onclick: step(1) }, '▼'));
+      }
+      row.append(side, buildItem(w, 'div'));
+      rows.append(row);
+    });
+
+    return h('li', { class: 'saga' },
+      h('div', { class: 'saga-head' },
+        h('button', { type: 'button', class: 'saga-title', 'aria-expanded': String(open),
+          onclick: function () { S.sagaOpen[name] = !open; renderWatch(); } },
+          h('span', { text: (open ? '▾ ' : '▸ ') + '📚 ' + name }),
+          h('small', { text: members.length + ' ' + pl(members.length, 'título', 'títulos') + ' · ' + done + ' ' + pl(done, 'terminado', 'terminados') })),
+        h('div', { class: 'seg', role: 'group', 'aria-label': 'Orden de la saga' },
+          [['cola', 'Por cola'], ['manual', 'Arrastrar']].map(function (m) {
+            return h('button', { type: 'button', class: 'seg-b' + (mode === m[0] ? ' on' : ''), 'aria-pressed': String(mode === m[0]),
+              onclick: function () { if (mode !== m[0]) setSagaMode(name, m[0]); } }, m[1]);
+          }))
+      ),
+      open ? rows : null
+    );
   }
 
   function stepper(label, val, min, fn) {
@@ -1855,6 +2007,7 @@ const firebaseConfig = {
         var data = d.data();
         if (data.nameA) S.settings.nameA = data.nameA;
         if (data.nameB) S.settings.nameB = data.nameB;
+        if (data.sagaModes) S.settings.sagaModes = data.sagaModes;
         buildWho();
         renderAll();
       }
