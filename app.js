@@ -201,7 +201,7 @@ const firebaseConfig = {
     try {
       var q = new URLSearchParams(location.search);
       if (q.get('tab')) goTo(q.get('tab'), q.get('sub'));
-      if (q.get('wrapped')) setTimeout(openWrapped, 1200);
+      if (q.get('wrapped') && wrappedRange().ready) setTimeout(openWrapped, 1200);
     } catch (e) {}
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', function (ev) {
@@ -1211,8 +1211,11 @@ const firebaseConfig = {
 
   /* ---------- Wrapped (1 de enero → 2 de diciembre) ---------- */
   function wrappedRange() {
-    var y = new Date().getFullYear();
-    return { y: y, from: y + '-01-01', to: y + '-12-02', ready: todayISO() >= y + '-12-02' };
+    // El ciclo empieza cada 28 de noviembre y se abre el 2 de diciembre.
+    var t = todayISO(), y = new Date().getFullYear();
+    if (t < y + '-11-28') y -= 1;
+    var unlock = y + '-12-02';
+    return { y: y, from: y + '-01-01', to: unlock, ready: t >= unlock, daysLeft: Math.max(0, dayDiff(t, unlock)) };
   }
   function inISO(d, r) { return !!d && d >= r.from && d <= r.to; }
   function tsISO(t) { return t ? iso(new Date(t)) : ''; }
@@ -1255,7 +1258,7 @@ const firebaseConfig = {
     var MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     var names = nm('a') + ' y ' + nm('b');
 
-    slides.push({ tone: 'rose', kicker: names, big: 'Nuestro ' + st.r.y, sub: 'Del 1 de enero al 2 de diciembre.' + (st.r.ready ? '' : ' (Avance: todavía no llega el 2 de diciembre.)') });
+    slides.push({ tone: 'rose', kicker: names, big: 'Nuestro ' + st.r.y, sub: 'Del 1 de enero al 2 de diciembre.' });
 
     if (st.events.length) {
       slides.push({
@@ -1305,7 +1308,12 @@ const firebaseConfig = {
       h('button', { type: 'button', class: 'wr-close', 'aria-label': 'Cerrar', onclick: close }, '✕'),
       stage,
       h('button', { type: 'button', class: 'wr-nav wr-prev', 'aria-label': 'Anterior', onclick: function () { go(idx - 1); } }),
-      h('button', { type: 'button', class: 'wr-nav wr-next', 'aria-label': 'Siguiente', onclick: function () { go(idx + 1); } })
+      h('button', { type: 'button', class: 'wr-nav wr-next', 'aria-label': 'Siguiente', onclick: function () { go(idx + 1); } }),
+      h('div', { class: 'wr-actions' },
+        h('button', { type: 'button', class: 'btn', onclick: function () { shareSlides([slides[idx]], wrappedRange().y, 'share'); } }, 'Compartir'),
+        h('button', { type: 'button', class: 'btn ghost', onclick: function () { shareSlides([slides[idx]], wrappedRange().y, 'save'); } }, 'Guardar imagen'),
+        h('button', { type: 'button', class: 'btn ghost', onclick: function () { shareSlides(slides, wrappedRange().y, 'save'); } }, 'Guardar todas')
+      )
     );
     function close() { document.removeEventListener('keydown', key); if (wrappedEl) { wrappedEl.remove(); wrappedEl = null; } }
     function key(e) {
@@ -1337,15 +1345,147 @@ const firebaseConfig = {
     document.addEventListener('keydown', key);
     go(0);
   }
-  function setupWrapped() {
+  function refreshWrapped() {
     var btn = $('#btn-wrapped');
     if (!btn) return;
     var r = wrappedRange();
-    btn.textContent = r.ready ? '✨ ¡Nuestro Wrapped ' + r.y + ' ya está!' : '✨ Avance de nuestro Wrapped ' + r.y;
-    btn.classList.toggle('hot', r.ready);
-    btn.addEventListener('click', openWrapped);
+    if (!r.ready) {
+      btn.hidden = false;
+      btn.classList.remove('hot');
+      btn.classList.add('locked');
+      btn.textContent = '🎁 Sorpresa cada año · ' + (r.daysLeft === 1 ? 'se abre mañana' : 'se abre en ' + r.daysLeft + ' días');
+      return;
+    }
+    // Ya abierto: solo se muestra si ese año hay algo que resumir.
+    var st = wrappedStats();
+    var has = st.events.length || st.seen.length || st.letters || st.mem.length;
+    btn.hidden = !has;
+    btn.classList.remove('locked');
+    btn.classList.add('hot');
+    btn.textContent = '🎁 Sorpresa cada año · ver nuestro Wrapped ' + r.y;
+  }
+  function setupWrapped() {
+    var btn = $('#btn-wrapped');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var r = wrappedRange();
+      if (!r.ready) { toast('Es una sorpresa 🎁 Se abre el 2 de diciembre.'); return; }
+      openWrapped();
+    });
+    refreshWrapped();
   }
 
+  /* ---------- Wrapped como imagen (guardar / compartir) ---------- */
+  var TONES = { rose: '#e09aad', amber: '#e0aa70', violet: '#b891dc', sage: '#86bc9f', sky: '#93a9dc', gold: '#d3b27f' };
+
+  function loadImg(src) {
+    return new Promise(function (resolve) {
+      var im = new Image();
+      if (!/^data:/.test(src)) im.crossOrigin = 'anonymous';
+      im.onload = function () { resolve(im); };
+      im.onerror = function () { resolve(null); };
+      im.src = src;
+    });
+  }
+  function wrapText(ctx, text, maxW) {
+    var words = String(text).split(/\s+/), lines = [], cur = '';
+    words.forEach(function (w) {
+      var t = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  function slideToBlob(sl, year) {
+    var W = 1080, H = 1920, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var ctx = c.getContext('2d'), col = TONES[sl.tone] || TONES.rose;
+    var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    return ready.then(function () {
+      return Promise.all((sl.covers || []).slice(0, 6).map(loadImg));
+    }).then(function (imgs) {
+      imgs = imgs.filter(Boolean);
+      ctx.fillStyle = '#130f17'; ctx.fillRect(0, 0, W, H);
+      var g = ctx.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, 1100);
+      g.addColorStop(0, 'rgba(224,154,173,.22)'); g.addColorStop(1, 'rgba(224,154,173,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      var serif = "'Instrument Serif','Iowan Old Style',Georgia,serif", sans = "'Hanken Grotesk',system-ui,sans-serif";
+
+      // bloque de texto: se calcula la altura para centrarlo
+      var big = sl.small ? 120 : (String(sl.big).length > 4 ? 150 : 360);
+      ctx.font = '400 ' + big + 'px ' + serif;
+      var bigLines = wrapText(ctx, sl.big, W - 160);
+      ctx.font = 'italic 400 64px ' + serif;
+      var subLines = wrapText(ctx, sl.sub, W - 200);
+      var covH = imgs.length ? (imgs.length === 1 ? 560 : imgs.length <= 3 ? 400 : 300) + 40 : 0;
+      var extras = (sl.extra || []).filter(Boolean);
+      var total = 50 + 60 + bigLines.length * big * 1.05 + 40 + subLines.length * 78 + covH + extras.length * 62;
+      var y = Math.max(220, (H - total) / 2);
+
+      ctx.fillStyle = col; ctx.font = '500 40px ' + sans;
+      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '8px';
+      ctx.fillText(String(sl.kicker).toUpperCase(), W / 2, y + 40);
+      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+      y += 50 + 60;
+      ctx.font = '400 ' + big + 'px ' + serif; ctx.fillStyle = col;
+      bigLines.forEach(function (ln) { y += big * 1.0; ctx.fillText(ln, W / 2, y); y += big * 0.05; });
+      y += 40;
+      ctx.font = 'italic 400 64px ' + serif; ctx.fillStyle = '#f1e8ec';
+      subLines.forEach(function (ln) { y += 78; ctx.fillText(ln, W / 2, y - 14); });
+      if (imgs.length) {
+        y += 40;
+        var h2 = covH - 40, w2 = Math.round(h2 * 2 / 3), gap = 24;
+        var perRow = imgs.length <= 3 ? imgs.length : 3;
+        var rows = Math.ceil(imgs.length / perRow);
+        if (rows === 2) { h2 = Math.round((covH - 40 - gap) / 2); w2 = Math.round(h2 * 2 / 3); }
+        imgs.forEach(function (im, i) {
+          var r = Math.floor(i / perRow), k = i % perRow, inRow = Math.min(perRow, imgs.length - r * perRow);
+          var x = (W - (inRow * w2 + (inRow - 1) * gap)) / 2 + k * (w2 + gap);
+          var yy = y + r * (h2 + gap);
+          ctx.save();
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(x, yy, w2, h2, 20); else ctx.rect(x, yy, w2, h2);
+          ctx.clip();
+          var ar = im.width / im.height, tw = w2, th = w2 / ar;
+          if (th < h2) { th = h2; tw = h2 * ar; }
+          ctx.drawImage(im, x + (w2 - tw) / 2, yy + (h2 - th) / 2, tw, th);
+          ctx.restore();
+        });
+        y += covH - 40;
+      }
+      ctx.font = '400 44px ' + sans; ctx.fillStyle = '#b9a8b3';
+      extras.forEach(function (t) { y += 62; ctx.fillText(t, W / 2, y); });
+
+      ctx.font = '400 38px ' + sans; ctx.fillStyle = '#85747f';
+      ctx.fillText('Nuestro Día · ' + nm('a') + ' y ' + nm('b') + ' · ' + year, W / 2, H - 110);
+      return new Promise(function (resolve, reject) {
+        try { c.toBlob(function (b) { b ? resolve(b) : reject(new Error('blob')); }, 'image/png'); }
+        catch (e) { reject(e); }
+      });
+    });
+  }
+  function downloadBlob(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+  function shareSlides(list, year, mode) {
+    toast('Preparando imagen…');
+    return Promise.all(list.map(function (sl) { return slideToBlob(sl, year); })).then(function (blobs) {
+      var files = blobs.map(function (b, i) { return new File([b], 'nuestro-wrapped-' + year + '-' + (i + 1) + '.png', { type: 'image/png' }); });
+      if (mode === 'share' && navigator.canShare && navigator.canShare({ files: files })) {
+        return navigator.share({ files: files, title: 'Nuestro Wrapped ' + year }).catch(function (e) {
+          if (e && e.name === 'AbortError') return;
+          throw e;
+        });
+      }
+      files.forEach(function (f, i) { setTimeout(function () { downloadBlob(f, f.name); }, i * 400); });
+      toast(mode === 'share' ? 'Tu navegador no comparte archivos; se descargó la imagen.' : 'Imagen guardada.');
+    }).catch(function () { toast('No se pudo crear la imagen.'); });
+  }
   function renderAll() {
     renderRibbon();
     renderHoy();
@@ -1356,6 +1496,7 @@ const firebaseConfig = {
     renderCountdowns();
     renderPolls();
     renderMemories();
+    refreshWrapped();
   }
 
   document.addEventListener('DOMContentLoaded', function () {
