@@ -1362,14 +1362,16 @@ const firebaseConfig = {
 
 
   /* ---------- Wrapped (1 de enero → 2 de diciembre) ---------- */
+  // TEMPORAL: true = desbloqueado para ver el diseño. Volver a poner false cuando se acuerde el diseño.
+  var WRAPPED_PREVIEW = true;
   function wrappedRange() {
     // 28 nov: aparece bloqueado · 2 dic: se abre · 31 dic: último día · después se oculta hasta el siguiente 28 nov.
     var t = todayISO(), y = new Date().getFullYear();
     var unlock = y + '-12-02';
     return {
       y: y, from: y + '-01-01', to: unlock,
-      visible: t >= y + '-11-28' && t <= y + '-12-31',
-      ready: t >= unlock,
+      visible: WRAPPED_PREVIEW || (t >= y + '-11-28' && t <= y + '-12-31'),
+      ready: WRAPPED_PREVIEW || t >= unlock,
       daysLeft: Math.max(0, dayDiff(t, unlock))
     };
   }
@@ -1515,7 +1517,7 @@ const firebaseConfig = {
     }
     btn.classList.remove('locked');
     btn.classList.add('hot');
-    btn.textContent = '🎁 Sorpresa cada año · ver nuestro Wrapped ' + r.y;
+    btn.textContent = '🎁 Sorpresa cada año · ver nuestro Wrapped ' + r.y + (WRAPPED_PREVIEW ? ' (vista previa)' : '');
   }
   function setupWrapped() {
     var btn = $('#btn-wrapped');
