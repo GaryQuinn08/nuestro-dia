@@ -201,7 +201,7 @@ const firebaseConfig = {
     try {
       var q = new URLSearchParams(location.search);
       if (q.get('tab')) goTo(q.get('tab'), q.get('sub'));
-      if (q.get('wrapped') && wrappedRange().ready) setTimeout(openWrapped, 1200);
+      if (q.get('wrapped') && wrappedRange().visible && wrappedRange().ready) setTimeout(openWrapped, 1200);
     } catch (e) {}
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', function (ev) {
@@ -1211,11 +1211,15 @@ const firebaseConfig = {
 
   /* ---------- Wrapped (1 de enero → 2 de diciembre) ---------- */
   function wrappedRange() {
-    // El ciclo empieza cada 28 de noviembre y se abre el 2 de diciembre.
+    // 28 nov: aparece bloqueado · 2 dic: se abre · 31 dic: último día · después se oculta hasta el siguiente 28 nov.
     var t = todayISO(), y = new Date().getFullYear();
-    if (t < y + '-11-28') y -= 1;
     var unlock = y + '-12-02';
-    return { y: y, from: y + '-01-01', to: unlock, ready: t >= unlock, daysLeft: Math.max(0, dayDiff(t, unlock)) };
+    return {
+      y: y, from: y + '-01-01', to: unlock,
+      visible: t >= y + '-11-28' && t <= y + '-12-31',
+      ready: t >= unlock,
+      daysLeft: Math.max(0, dayDiff(t, unlock))
+    };
   }
   function inISO(d, r) { return !!d && d >= r.from && d <= r.to; }
   function tsISO(t) { return t ? iso(new Date(t)) : ''; }
@@ -1349,17 +1353,14 @@ const firebaseConfig = {
     var btn = $('#btn-wrapped');
     if (!btn) return;
     var r = wrappedRange();
+    if (!r.visible) { btn.hidden = true; return; }
+    btn.hidden = false;
     if (!r.ready) {
-      btn.hidden = false;
       btn.classList.remove('hot');
       btn.classList.add('locked');
       btn.textContent = '🎁 Sorpresa cada año · ' + (r.daysLeft === 1 ? 'se abre mañana' : 'se abre en ' + r.daysLeft + ' días');
       return;
     }
-    // Ya abierto: solo se muestra si ese año hay algo que resumir.
-    var st = wrappedStats();
-    var has = st.events.length || st.seen.length || st.letters || st.mem.length;
-    btn.hidden = !has;
     btn.classList.remove('locked');
     btn.classList.add('hot');
     btn.textContent = '🎁 Sorpresa cada año · ver nuestro Wrapped ' + r.y;
@@ -1369,6 +1370,7 @@ const firebaseConfig = {
     if (!btn) return;
     btn.addEventListener('click', function () {
       var r = wrappedRange();
+      if (!r.visible) return;
       if (!r.ready) { toast('Es una sorpresa 🎁 Se abre el 2 de diciembre.'); return; }
       openWrapped();
     });
