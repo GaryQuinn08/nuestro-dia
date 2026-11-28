@@ -201,6 +201,7 @@ const firebaseConfig = {
     try {
       var q = new URLSearchParams(location.search);
       if (q.get('tab')) goTo(q.get('tab'), q.get('sub'));
+      if (q.get('wrapped')) setTimeout(openWrapped, 1200);
     } catch (e) {}
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', function (ev) {
@@ -866,7 +867,7 @@ const firebaseConfig = {
             h('div', { class: 'w-controls', style: 'margin-top:10px' },
               h('div', { class: 'seg', role: 'group', 'aria-label': 'Estado' }, WSTAT.map(function (s) {
                 return h('button', { type: 'button', class: 'seg-b' + (status === s[0] ? ' on' : ''), 'aria-pressed': String(status === s[0]),
-                  onclick: function () { if (status !== s[0]) run(function () { return upd('watch', w.id, { status: s[0] }); }); } }, s[1]);
+                  onclick: function () { if (status !== s[0]) run(function () { return upd('watch', w.id, s[0] === 'terminado' ? { status: s[0], finishedAt: Date.now() } : { status: s[0] }); }); } }, s[1]);
               })),
               showProgress ? h('div', { class: 'steps' },
                 stepper('Temp', season, 1, function (v) { run(function () { return upd('watch', w.id, { season: v }); }); }),
@@ -1207,6 +1208,144 @@ const firebaseConfig = {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
+
+  /* ---------- Wrapped (1 de enero → 2 de diciembre) ---------- */
+  function wrappedRange() {
+    var y = new Date().getFullYear();
+    return { y: y, from: y + '-01-01', to: y + '-12-02', ready: todayISO() >= y + '-12-02' };
+  }
+  function inISO(d, r) { return !!d && d >= r.from && d <= r.to; }
+  function tsISO(t) { return t ? iso(new Date(t)) : ''; }
+  function topKey(map) {
+    var best = null;
+    Object.keys(map).forEach(function (k) { if (best === null || map[k] > map[best]) best = k; });
+    return best;
+  }
+
+  function wrappedStats() {
+    var r = wrappedRange();
+    var ev = S.events.filter(function (e) { return inISO(e.date, r); });
+    var cat = {}, month = {};
+    ev.forEach(function (e) {
+      cat[e.cat || 'otro'] = (cat[e.cat || 'otro'] || 0) + 1;
+      var m = Number(String(e.date).slice(5, 7)) - 1;
+      month[m] = (month[m] || 0) + 1;
+    });
+    var seen = S.watch.filter(function (w) { return w.status === 'terminado' && inISO(tsISO(w.finishedAt || w.createdAt), r); });
+    var kinds = {};
+    seen.forEach(function (w) { kinds[w.kind] = (kinds[w.kind] || 0) + 1; });
+    var rated = seen.map(function (w) { return { w: w, avg: calcMetacritic(w).avg }; })
+      .filter(function (x) { return x.avg !== null; }).sort(function (a, b) { return b.avg - a.avg; });
+    var letters = S.letters.filter(function (l) { return inISO(tsISO(l.createdAt), r); });
+    var byA = letters.filter(function (l) { return l.from === 'a'; }).length;
+    var mem = S.memories.filter(function (m) { return inISO(m.date || tsISO(m.createdAt), r); });
+    var todosDone = S.todos.filter(function (t) { return t.done && inISO(tsISO(t.createdAt), r); }).length;
+    var plansDone = S.plans.filter(function (p) { return p.status === 'hecha' && inISO(p.date || tsISO(p.createdAt), r); }).length;
+    return {
+      r: r, events: ev, evDone: ev.filter(function (e) { return e.done; }).length,
+      topCat: topKey(cat), topMonth: topKey(month), cat: cat,
+      seen: seen, kinds: kinds, rated: rated,
+      letters: letters.length, lettersA: byA, lettersB: letters.length - byA,
+      mem: mem, todosDone: todosDone, plansDone: plansDone
+    };
+  }
+
+  function wrappedSlides() {
+    var st = wrappedStats(), slides = [];
+    var MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    var names = nm('a') + ' y ' + nm('b');
+
+    slides.push({ tone: 'rose', kicker: names, big: 'Nuestro ' + st.r.y, sub: 'Del 1 de enero al 2 de diciembre.' + (st.r.ready ? '' : ' (Avance: todavía no llega el 2 de diciembre.)') });
+
+    if (st.events.length) {
+      slides.push({
+        tone: 'amber', kicker: 'Nuestros días', big: String(st.events.length),
+        sub: pl(st.events.length, 'actividad', 'actividades') + ' juntos, ' + st.evDone + ' ya hechas.',
+        extra: [
+          st.topCat ? 'Lo que más hicimos: ' + (CATS[st.topCat] ? CATS[st.topCat].l : st.topCat).toLowerCase() + ' (' + st.cat[st.topCat] + ')' : '',
+          st.topMonth !== null ? 'Nuestro mes más activo: ' + MONTHS[Number(st.topMonth)] : ''
+        ]
+      });
+    }
+    if (st.seen.length) {
+      var kindTxt = Object.keys(st.kinds).map(function (k) { return st.kinds[k] + ' ' + (KINDS[k] || k).toLowerCase() + (st.kinds[k] === 1 ? '' : 's'); }).join(' · ');
+      slides.push({ tone: 'violet', kicker: 'Catálogo', big: String(st.seen.length), sub: pl(st.seen.length, 'título terminado', 'títulos terminados') + ' juntos.', extra: [kindTxt],
+        covers: st.seen.filter(function (w) { return w.cover; }).slice(0, 6).map(function (w) { return w.cover; }) });
+    }
+    if (st.rated.length) {
+      var top = st.rated[0];
+      slides.push({ tone: 'sage', kicker: 'Lo mejor calificado', big: top.w.title, sub: 'Promedio de ' + top.avg + ' / 100', small: true,
+        covers: top.w.cover ? [top.w.cover] : [],
+        extra: st.rated.slice(1, 4).map(function (x, i) { return (i + 2) + '. ' + x.w.title + ' (' + x.avg + ')'; }) });
+    }
+    if (st.letters) {
+      slides.push({ tone: 'rose', kicker: 'Cartitas', big: String(st.letters), sub: pl(st.letters, 'cartita escrita', 'cartitas escritas'),
+        extra: [nm('a') + ': ' + st.lettersA + ' · ' + nm('b') + ': ' + st.lettersB] });
+    }
+    if (st.mem.length) {
+      slides.push({ tone: 'sky', kicker: 'Recuerdos', big: String(st.mem.length), sub: pl(st.mem.length, 'recuerdo guardado', 'recuerdos guardados'),
+        covers: st.mem.filter(function (m) { return m.photo; }).slice(0, 6).map(function (m) { return m.photo; }) });
+    }
+    if (st.todosDone || st.plansDone) {
+      slides.push({ tone: 'gold', kicker: 'Cumplimos', big: String(st.todosDone + st.plansDone), sub: 'cosas hechas',
+        extra: [st.todosDone + ' ' + pl(st.todosDone, 'pendiente', 'pendientes') + ' · ' + st.plansDone + ' ' + pl(st.plansDone, 'plan', 'planes')] });
+    }
+    slides.push({ tone: 'rose', kicker: 'Y lo que viene', big: 'Más de nosotros', sub: 'Gracias por cada día, ' + names + ' ❤' });
+    return slides;
+  }
+
+  var wrappedEl = null;
+  function openWrapped() {
+    var slides = wrappedSlides(), idx = 0;
+    if (wrappedEl) wrappedEl.remove();
+    var bars = slides.map(function () { return h('i', {}); });
+    var stage = h('div', { class: 'wr-stage' });
+    wrappedEl = h('div', { class: 'wrapped', role: 'dialog', 'aria-label': 'Nuestro Wrapped' },
+      h('div', { class: 'wr-bars' }, bars),
+      h('button', { type: 'button', class: 'wr-close', 'aria-label': 'Cerrar', onclick: close }, '✕'),
+      stage,
+      h('button', { type: 'button', class: 'wr-nav wr-prev', 'aria-label': 'Anterior', onclick: function () { go(idx - 1); } }),
+      h('button', { type: 'button', class: 'wr-nav wr-next', 'aria-label': 'Siguiente', onclick: function () { go(idx + 1); } })
+    );
+    function close() { document.removeEventListener('keydown', key); if (wrappedEl) { wrappedEl.remove(); wrappedEl = null; } }
+    function key(e) {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight') go(idx + 1);
+      else if (e.key === 'ArrowLeft') go(idx - 1);
+    }
+    function go(n) {
+      if (n >= slides.length) return close();
+      if (n < 0) n = 0;
+      idx = n;
+      var sl = slides[n];
+      stage.replaceChildren();
+      stage.className = 'wr-stage tone-' + sl.tone;
+      var kids = [
+        h('p', { class: 'wr-k', text: sl.kicker }),
+        h('h2', { class: 'wr-big' + (sl.small ? ' sm' : ''), text: sl.big }),
+        h('p', { class: 'wr-sub', text: sl.sub })
+      ];
+      if (sl.covers && sl.covers.length) {
+        kids.push(h('div', { class: 'wr-covers n' + Math.min(sl.covers.length, 6) },
+          sl.covers.map(function (c) { return h('img', { src: c, alt: '', loading: 'lazy' }); })));
+      }
+      (sl.extra || []).filter(Boolean).forEach(function (t) { kids.push(h('p', { class: 'wr-x', text: t })); });
+      kids.forEach(function (k) { stage.append(k); });
+      bars.forEach(function (b, i) { b.className = i <= n ? 'on' : ''; });
+    }
+    document.body.append(wrappedEl);
+    document.addEventListener('keydown', key);
+    go(0);
+  }
+  function setupWrapped() {
+    var btn = $('#btn-wrapped');
+    if (!btn) return;
+    var r = wrappedRange();
+    btn.textContent = r.ready ? '✨ ¡Nuestro Wrapped ' + r.y + ' ya está!' : '✨ Avance de nuestro Wrapped ' + r.y;
+    btn.classList.toggle('hot', r.ready);
+    btn.addEventListener('click', openWrapped);
+  }
+
   function renderAll() {
     renderRibbon();
     renderHoy();
@@ -1508,6 +1647,7 @@ const firebaseConfig = {
     setupInstall();
     setupNotifications();
     setupDeepLink();
+    setupWrapped();
 
     try {
       var app = initializeApp(firebaseConfig);
