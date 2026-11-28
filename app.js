@@ -448,13 +448,29 @@ const firebaseConfig = {
   }
 
   function srcMovies(q, signal) {
-    var url = 'https://itunes.apple.com/search?media=movie&entity=movie&limit=4&country=MX&term=' + encodeURIComponent(q);
+    var url = 'https://itunes.apple.com/search?media=movie&entity=movie&limit=8&country=MX&term=' + encodeURIComponent(q);
     return getJson(url, { signal: signal }).then(function (d) {
       if (!d || !Array.isArray(d.results)) return null;
       return d.results.map(function (m) {
         var art = httpsUrl(m.artworkUrl100 || '').replace(/\/\d+x\d+bb\.(jpg|png)/, '/300x450bb.$1');
         return { title: m.trackName || '', kind: 'pelicula', img: art, plats: [], year: yearOf(m.releaseDate), src: 'itunes-movie' };
       });
+    });
+  }
+
+  // Segunda fuente de películas (sin llave): sugerencias de IMDb. Entiende títulos parciales.
+  function srcMoviesImdb(q, signal) {
+    var qq = String(q).toLowerCase().trim();
+    if (!qq) return Promise.resolve([]);
+    var url = 'https://v3.sg.media-imdb.com/suggestion/' + encodeURIComponent(qq.charAt(0).match(/[a-z0-9]/) ? qq.charAt(0) : 'x') +
+      '/' + encodeURIComponent(qq) + '.json';
+    return getJson(url, { signal: signal }).then(function (d) {
+      if (!d || !Array.isArray(d.d)) return null;
+      return d.d.filter(function (m) { return m.l && (m.qid === 'movie' || m.qid === 'tvMovie'); })
+        .slice(0, 6).map(function (m) {
+          var img = m.i && m.i.imageUrl ? httpsUrl(m.i.imageUrl).replace(/\._V1_.*\.(jpg|png)$/, '._V1_UX300.$1') : '';
+          return { title: m.l, kind: 'pelicula', img: img, plats: [], year: m.y ? String(m.y) : '', src: 'imdb' };
+        });
     });
   }
 
@@ -479,7 +495,7 @@ const firebaseConfig = {
       });
   }
 
-  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies], juego: [srcGames] };
+  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies, srcMoviesImdb], juego: [srcGames] };
 
   /* ---------- Relevancia ----------
      0 = igual, 1 = empieza con, 2 = contiene (o tiene todas las palabras), 3 = otro.
@@ -643,6 +659,22 @@ const firebaseConfig = {
     return h('span', { class: 'auto-ph', text: (KINDS[it.kind] || '?').slice(0, 5) });
   }
 
+  // Reparte los lugares entre categorías (cada una aporta su mejor resultado primero),
+  // para que las series no tapen a las películas ni a los juegos.
+  function diversify(items, max) {
+    var groups = {}, order = [];
+    items.forEach(function (it) {
+      if (!groups[it.kind]) { groups[it.kind] = []; order.push(it.kind); }
+      groups[it.kind].push(it);
+    });
+    var out = [], round = 0;
+    while (out.length < max && order.some(function (k) { return groups[k].length > round; })) {
+      order.forEach(function (k) { if (out.length < max && groups[k][round]) out.push(groups[k][round]); });
+      round++;
+    }
+    return out;
+  }
+
   /* ---------- Desplegable tipo buscador ---------- */
   function setupAutocomplete() {
     var input = $('#w-title');
@@ -656,7 +688,7 @@ const firebaseConfig = {
     }
 
     function renderDropdown(items, done) {
-      currentItems = items.slice(0, MAX_SUGGESTIONS);
+      currentItems = diversify(items, MAX_SUGGESTIONS);
       activeIdx = -1;
       dropdown.replaceChildren();
       dropdown.hidden = false;
