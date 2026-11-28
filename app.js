@@ -1400,14 +1400,18 @@ const firebaseConfig = {
     var letters = S.letters.filter(function (l) { return inISO(tsISO(l.createdAt), r); });
     var byA = letters.filter(function (l) { return l.from === 'a'; }).length;
     var mem = S.memories.filter(function (m) { return inISO(m.date || tsISO(m.createdAt), r); });
-    var todosDone = S.todos.filter(function (t) { return t.done && inISO(tsISO(t.createdAt), r); }).length;
+    var todosAll = S.todos.filter(function (t) { return inISO(tsISO(t.createdAt), r); });
+    var todosDoneList = todosAll.filter(function (t) { return t.done; });
+    var todosDone = todosDoneList.length;
+    var todosBy = { a: 0, b: 0, both: 0 };
+    todosDoneList.forEach(function (t) { todosBy[t.who === 'a' || t.who === 'b' ? t.who : 'both']++; });
     var plansDone = S.plans.filter(function (p) { return p.status === 'hecha' && inISO(p.date || tsISO(p.createdAt), r); }).length;
     return {
       r: r, events: ev, evDone: ev.filter(function (e) { return e.done; }).length,
       topCat: topKey(cat), topMonth: topKey(month), cat: cat,
       seen: seen, kinds: kinds, rated: rated,
       letters: letters.length, lettersA: byA, lettersB: letters.length - byA,
-      mem: mem, todosDone: todosDone, plansDone: plansDone
+      mem: mem, todosAll: todosAll.length, todosDone: todosDone, todosBy: todosBy, plansDone: plansDone
     };
   }
 
@@ -1416,7 +1420,7 @@ const firebaseConfig = {
     var MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     var names = nm('a') + ' y ' + nm('b');
 
-    slides.push({ tone: 'rose', kicker: names, big: 'Nuestro ' + st.r.y, sub: 'Del 1 de enero al 2 de diciembre.' });
+    slides.push({ tone: 'rose', kicker: names, big: 'Nuestro ' + st.r.y, sub: 'Este año hicimos muchas cosas, pero este es un resumen de ellas.' });
 
     if (st.events.length) {
       slides.push({
@@ -1447,9 +1451,34 @@ const firebaseConfig = {
       slides.push({ tone: 'sky', kicker: 'Recuerdos', big: String(st.mem.length), sub: pl(st.mem.length, 'recuerdo guardado', 'recuerdos guardados'),
         covers: st.mem.filter(function (m) { return m.photo; }).slice(0, 6).map(function (m) { return m.photo; }) });
     }
-    if (st.todosDone || st.plansDone) {
-      slides.push({ tone: 'gold', kicker: 'Cumplimos', big: String(st.todosDone + st.plansDone), sub: 'cosas hechas',
-        extra: [st.todosDone + ' ' + pl(st.todosDone, 'pendiente', 'pendientes') + ' · ' + st.plansDone + ' ' + pl(st.plansDone, 'plan', 'planes')] });
+    if (st.todosAll) {
+      var pct = Math.round(st.todosDone * 100 / st.todosAll);
+      var who = [];
+      if (st.todosBy.a) who.push(nm('a') + ': ' + st.todosBy.a);
+      if (st.todosBy.b) who.push(nm('b') + ': ' + st.todosBy.b);
+      if (st.todosBy.both) who.push('Juntos: ' + st.todosBy.both);
+      slides.push({ tone: 'gold', kicker: 'Pendientes', big: String(st.todosDone),
+        sub: pl(st.todosDone, 'pendiente cumplido', 'pendientes cumplidos') + ' de ' + st.todosAll + ' (' + pct + '%)',
+        extra: [who.join(' · '), st.todosAll - st.todosDone ? pl(st.todosAll - st.todosDone, 'Nos falta 1', 'Nos faltan ' + (st.todosAll - st.todosDone)) + ' para el siguiente año' : '¡Los cumplimos todos!'] });
+    }
+    if (st.plansDone) {
+      slides.push({ tone: 'amber', kicker: 'Planes', big: String(st.plansDone), sub: pl(st.plansDone, 'plan hecho', 'planes hechos') + ' juntos.' });
+    }
+
+    // Resumen de todo: lo que más hicimos en la app.
+    var tally = [
+      ['Actividades', st.events.length], ['Series', st.kinds.serie || 0], ['Animes', st.kinds.anime || 0],
+      ['Películas', st.kinds.pelicula || 0], ['Videojuegos', st.kinds.juego || 0], ['Cartitas', st.letters],
+      ['Recuerdos', st.mem.length], ['Pendientes cumplidos', st.todosDone], ['Planes hechos', st.plansDone]
+    ].filter(function (x) { return x[1] > 0; }).sort(function (x, y) { return y[1] - x[1]; });
+    if (tally.length) {
+      var total = tally.reduce(function (n, x) { return n + x[1]; }, 0);
+      var watchTop = ['Series', 'Animes', 'Películas', 'Videojuegos'].map(function (k) { return tally.filter(function (x) { return x[0] === k; })[0]; })
+        .filter(Boolean).sort(function (x, y) { return y[1] - x[1]; })[0];
+      slides.push({ tone: 'sage', kicker: 'En resumen', big: tally[0][0], small: true,
+        sub: 'fue lo que más hicimos: ' + tally[0][1] + ' de ' + total + ' cosas en el año.',
+        extra: tally.slice(0, 5).map(function (x, i) { return (i + 1) + '. ' + x[0] + ' · ' + x[1]; })
+          .concat(watchTop ? ['Lo que más vimos: ' + watchTop[0].toLowerCase() + ' (' + watchTop[1] + ')'] : []) });
     }
     slides.push({ tone: 'rose', kicker: 'Y lo que viene', big: 'Más de nosotros', sub: 'Gracias por cada día, ' + names + ' ❤' });
     return slides;
