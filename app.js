@@ -877,7 +877,7 @@ const firebaseConfig = {
           ),
           delBtn('watch', w.id)
         ),
-        h('div', { class: 'mc-panel' },
+        status === 'terminado' ? h('div', { class: 'mc-panel' },
           h('div', { class: 'mc-header' },
             h('div', { class: 'mc-badge ' + mc.cls, text: mc.avg !== null ? mc.avg : 'TBD' }),
             h('div', { class: 'mc-summary' },
@@ -886,7 +886,7 @@ const firebaseConfig = {
             )
           ),
           h('div', { class: 'mc-reviews' }, revCard('a'), revCard('b'))
-        )
+        ) : null
       );
     }
 
