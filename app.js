@@ -353,7 +353,7 @@ const firebaseConfig = {
      ============================================================ */
   var RAWG_KEY = '';
   // Llave gratis de TMDB (themoviedb.org → Configuración → API). Mejora mucho la búsqueda de películas en español.
-  var TMDB_KEY = '';
+  var TMDB_KEY = 'c0c4040a9c629e4f871e96dbf4bdb8ff';
   var SEARCH_TIMEOUT = 5000;
   var DEBOUNCE_MS = 180;
   var MAX_SUGGESTIONS = 8;
