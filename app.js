@@ -458,22 +458,6 @@ const firebaseConfig = {
     });
   }
 
-  // Segunda fuente de películas (sin llave): sugerencias de IMDb. Entiende títulos parciales.
-  function srcMoviesImdb(q, signal) {
-    var qq = String(q).toLowerCase().trim();
-    if (!qq) return Promise.resolve([]);
-    var url = 'https://v3.sg.media-imdb.com/suggestion/' + encodeURIComponent(qq.charAt(0).match(/[a-z0-9]/) ? qq.charAt(0) : 'x') +
-      '/' + encodeURIComponent(qq) + '.json';
-    return getJson(url, { signal: signal }).then(function (d) {
-      if (!d || !Array.isArray(d.d)) return null;
-      return d.d.filter(function (m) { return m.l && (m.qid === 'movie' || m.qid === 'tvMovie'); })
-        .slice(0, 6).map(function (m) {
-          var img = m.i && m.i.imageUrl ? httpsUrl(m.i.imageUrl).replace(/\._V1_.*\.(jpg|png)$/, '._V1_UX300.$1') : '';
-          return { title: m.l, kind: 'pelicula', img: img, plats: [], year: m.y ? String(m.y) : '', src: 'imdb' };
-        });
-    });
-  }
-
   function srcGames(q, signal) {
     if (RAWG_KEY) {
       var url = 'https://api.rawg.io/api/games?page_size=4&search_precise=true&key=' + encodeURIComponent(RAWG_KEY) +
@@ -495,7 +479,7 @@ const firebaseConfig = {
       });
   }
 
-  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies, srcMoviesImdb], juego: [srcGames] };
+  var SOURCES = { anime: [srcAnime], serie: [srcSeries, srcTvItunes], pelicula: [srcMovies], juego: [srcGames] };
 
   /* ---------- Relevancia ----------
      0 = igual, 1 = empieza con, 2 = contiene (o tiene todas las palabras), 3 = otro.
